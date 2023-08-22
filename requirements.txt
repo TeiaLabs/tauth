@@ -1,0 +1,10 @@
+authlib
+cachetools
+fastapi>=0.98
+http_error_schemas
+httpx
+multiformats
+pydantic[dotenv,email]>=1.10
+python-multipart
+redb-odm
+uvicorn
