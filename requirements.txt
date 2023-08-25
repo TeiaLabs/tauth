@@ -1,10 +1,11 @@
 authlib
 cachetools
-fastapi>=0.98
+fastapi[all]>=0.98,<0.99
 http_error_schemas
 httpx
 multiformats
-pydantic[dotenv,email]>=1.10
+pydantic[dotenv,email]>=1.10,<2
+python-dotenv
 python-multipart
 redb-odm
 uvicorn
