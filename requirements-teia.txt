@@ -1,1 +1,0 @@
-melting_schemas @ git+ssh://git@github.com/TeiaLabs/melting-face.git@master#subdirectory=schemas

@@ -1,0 +1,48 @@
+name: Test API
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - "tauth/**"
+      - ".github/workflows/test.yml"
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - "tauth/**"
+      - ".github/workflows/test.yml"
+  
+permissions:
+  contents: read
+
+env:
+  TAUTH_MONGODB_URI: ${{ secrets.ATLAS_INTERNAL_MONGODB_URI }}
+  TAUTH_MONGODB_DBNAME: "tauth-github-actions"
+  AZURE_AD_TENANT: ${{ secrets.WINGMAN_AZURE_AD_TENANT }}
+  AZURE_AD_AUDIENCE: ${{ secrets.WINGMAN_AZURE_AD_AUDIENCE }}
+
+jobs:
+  autotester:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-test.txt
+      - name: Setup pip and pytest
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-test.txt
+      - name: Install.
+        run: |
+          pip install .
+      - name: Test.
+        working-directory: .
+        run: pytest ./tests/ --tb=no
