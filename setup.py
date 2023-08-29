@@ -47,7 +47,7 @@ setuptools.setup(
     description="FastAPI Compatible Authentication",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/TeiaLabs/melting-face/tauth",  # TODO: move to own repo?
+    url="https://github.com/TeiaLabs/tauth",  # TODO: move to own repo?
     packages=setuptools.find_packages(),
     python_requires=">=3.10",
     install_requires=requirements,
