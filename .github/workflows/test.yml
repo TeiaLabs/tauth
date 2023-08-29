@@ -11,15 +11,11 @@ on:
     paths:
       - "tauth/**"
       - ".github/workflows/test.yml"
-  
-permissions:
-  contents: read
+
 
 env:
   TAUTH_MONGODB_URI: ${{ secrets.ATLAS_INTERNAL_MONGODB_URI }}
   TAUTH_MONGODB_DBNAME: "tauth-github-actions"
-  AZURE_AD_TENANT: ${{ secrets.WINGMAN_AZURE_AD_TENANT }}
-  AZURE_AD_AUDIENCE: ${{ secrets.WINGMAN_AZURE_AD_AUDIENCE }}
 
 jobs:
   autotester:
