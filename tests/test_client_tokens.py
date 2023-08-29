@@ -29,8 +29,9 @@ def test_create_one(
     response = client.post(f"/api/tauth/clients/{client_obj['name']}/tokens", json=token_creation_request_obj, headers=headers)
     assert response.status_code == 201
     response_body = response.json()
-    expectations_token_creation_obj["name"] = token_creation_request_obj["name"]
-    run_validations(response_body, expectations_token_creation_obj)
+    expectations = dict(**expectations_token_creation_obj)
+    expectations["name"] = token_creation_request_obj["name"]
+    run_validations(response_body, expectations)
     response2 = client.post(f"/api/tauth/clients/{client_obj['name']}/tokens", json=token_creation_request_obj, headers=headers)
     assert response2.status_code == 409
     # TODO: check error body
