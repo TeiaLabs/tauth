@@ -2,8 +2,9 @@ import secrets
 from functools import lru_cache
 from typing import Optional
 
-from fastapi import HTTPException, status as s
-from pydantic import EmailStr
+from fastapi import HTTPException
+from fastapi import status as s
+from pydantic import EmailStr, validate_email
 from redb.interface.errors import DocumentNotFound, UniqueConstraintViolation
 
 from ..models import TokenDAO, UserDAO
@@ -62,6 +63,11 @@ def get_request_creator(token: str, user_email: Optional[str]):
         if not secrets.compare_digest(token, Settings().ROOT_TOKEN):
             code, m = s.HTTP_401_UNAUTHORIZED, "Root token does not match env var."
             raise HTTPException(status_code=code, detail=m)
+        try:
+            validate_email(user_email)
+        except:
+            code, m = s.HTTP_401_UNAUTHORIZED, "User email is not valid."
+            raise HTTPException(status_code=code, detail=m)
         request_creator_user_email = EmailStr(user_email)
     else:
         token_obj = validate_token_against_db(token, client_name, token_name)
@@ -69,6 +75,11 @@ def get_request_creator(token: str, user_email: Optional[str]):
             request_creator_user_email = token_obj.created_by.user_email
         else:
             token_creator_user_email = token_obj.created_by.user_email
+            try:
+                validate_email(user_email)
+            except:
+                code, m = s.HTTP_401_UNAUTHORIZED, "User email is not valid."
+                raise HTTPException(status_code=code, detail=m)
             request_creator_user_email = EmailStr(user_email)
     creator = Creator(
         client_name=client_name,

@@ -4,7 +4,6 @@ from typing import Iterable
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
-from pydantic import EmailStr
 
 from ..auth import auth0, azure_jwt, teia_api_key
 from ..settings import Settings
@@ -29,7 +28,7 @@ class RequestAuthenticator:
     @staticmethod
     def validate(
         request: Request,
-        user_email: EmailStr | None = Header(default=None, alias="X-User-Email", description="Ignore when using OAuth."),
+        user_email: str | None = Header(default=None, alias="X-User-Email", description="Ignore when using OAuth."),
         id_token : str | None = Header(default=None, alias="X-ID-Token", description="Auth0 ID token."),
         authorization: HTTPAuthorizationCredentials | None = Security(HTTPBase(scheme="bearer", auto_error=False)),
     ):
