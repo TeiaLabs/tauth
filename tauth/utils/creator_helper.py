@@ -60,7 +60,7 @@ def get_request_creator(token: str, user_email: Optional[str]):
         if user_email is None:
             code, m = s.HTTP_401_UNAUTHORIZED, "User email is required for root client."
             raise HTTPException(status_code=code, detail=m)
-        if not secrets.compare_digest(token, Settings().ROOT_API_KEY):
+        if not secrets.compare_digest(token, Settings().TAUTH_ROOT_API_KEY):
             code, m = s.HTTP_401_UNAUTHORIZED, "Root token does not match env var."
             raise HTTPException(status_code=code, detail=m)
         try:

@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     WORKERS: int = 1
 
     # MELT API key
-    ROOT_API_KEY: str = "MELT_/--default--0001"
+    TAUTH_ROOT_API_KEY: str = "MELT_/--default--0001"
 
     # mongodb
     TAUTH_MONGODB_DBNAME: str = "tauth"
