@@ -7,6 +7,7 @@ from pymongo import MongoClient
 from pymongo.database import Database
 
 from tauth.app import create_app
+from tauth.settings import Settings
 
 from .utils import (
     validate_isostring,
@@ -35,7 +36,7 @@ def client() -> TestClient:
 
 @pytest.fixture(scope="session")
 def test_token_value() -> str:
-    return "MELT_/--default--abcdef123456789"
+    return Settings().TAUTH_ROOT_API_KEY
 
 
 @pytest.fixture(scope="session")
@@ -44,7 +45,7 @@ def user_email() -> str:
 
 
 @pytest.fixture(scope="session")
-def headers(test_token_value, user_email) -> dict:
+def headers(test_token_value: str, user_email: str) -> dict:
     obj = {
         "Authorization": f"Bearer {test_token_value}",
         "X-User-Email": user_email,
