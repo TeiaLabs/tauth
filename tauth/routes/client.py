@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request, Depends
 from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
 
@@ -12,6 +12,7 @@ from ..schemas import (
     ClientOutJoinTokensAndUsers,
     Creator,
 )
+from ..injections import privileges
 from ..utils import validate_creation_access_level
 
 router = APIRouter(prefix="/clients")
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/clients")
 async def create_one(
     request: Request,
     client_in: ClientCreation = Body(),
+    creator: Creator = Depends(privileges.is_valid_admin)
 ) -> ClientCreationOut:
     """
     Create a new client.
@@ -30,7 +32,6 @@ async def create_one(
     - In order to create `/teia/athena/chat`, you must first create `/teia/athena`.
     - Trailing slashes are ignored.
     """
-    creator: Creator = request.state.creator
     validate_creation_access_level(client_in.name, creator.client_name)
     client = client_controller.create_one(client_in=client_in, creator=creator)
     token = token_controller.create_one(
