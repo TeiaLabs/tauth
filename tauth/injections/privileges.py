@@ -19,10 +19,11 @@ def get_creator(validate_access: Callable[[Creator], bool]) -> Callable[[Request
             return c
         else:
             s = status.HTTP_403_FORBIDDEN
-            d = {
+            d = {  # TODO: use http_error_schemas
                 "msg": "You do not have access to this resource.",
                 "info": {"creator": c.dict()},
             }
+            # TODO: delegate exception raising to the wrapped function
             raise HTTPException(status_code=s, detail=d)
     return wrapper
 
@@ -40,3 +41,8 @@ def is_valid_admin(creator: Creator) -> bool:
 @get_creator
 def is_valid_superuser(creator: Creator) -> bool:
     return creator.token_name == "default" and creator.client_name == "/"
+
+
+@get_creator
+def is_direct_user(creator: Creator) -> bool:
+    return creator.token_name not in ("auth0-jwt", "azure-jwt")
