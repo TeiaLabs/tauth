@@ -55,6 +55,11 @@ e.g.: `MELT_/myorg/myapp/ui--my.prod.token--z.................................`
 ## overrides
 
 The `creator` attribute can be overriden by the user, but only if the user has the `admin` privilege level.
+This is accomplished through custom headers: `X-User-Email` and `X-User-Ip`.
+
+### overrides v2
+
+New custom headers: `X-Tauth-Client`, `X-Tauth-App`.
 
 ## technical
 
@@ -62,9 +67,10 @@ When an X-Tauth-App-Name header is present, the Authorization header is checked 
 
 If an attribute `org-id` is present in the ID Token payload, tauth will attempt to map it to a pre-registered client.
 
-### middleware
+### middleware v1
 
-Its middleware adds an attribute called `creator` to the request object:
+Its middleware adds an attribute called `creator` to the request object.
+This object is intended to be recorded along any resources the user creates with his requests.
 
 ```python
 class Creator(BaseModel):
@@ -74,45 +80,71 @@ class Creator(BaseModel):
     user_ip: str = "127.0.0.1"
 ```
 
-This object is intended to be recorded along any resources the user creates with his requests.
+### middleware v2
 
-Things it'll track after V2.
+Its middleware will add a new attribute called `Infostar` to the request object.
+The Creator will be kept for backwards compatibility.
 
+- org separated from the client
 - whether any attributes were overriden by the user
 - whether this is a machine or a human user
+
+```python
+class Infostar(BaseModel):
+    client_name: str  # /osf/allai/code/extension
+    org_name: str  # /teialabs
+    token_name: str  # nei.workstation.homeoffice
+    user_email: EmailStr  # nei@teialabs.com
+    user_ip: str  # 170.0.0.69
+    human: bool  # differentiates between machine and human users
+    original: Optional[Infostar]  # if any attributes were overriden
+    extra: dict[str, str]  # e.g.: user-agent,
+```
 
 ### datamodels
 
 ```python
 class Client(BaseModel):
-    name: str
-    creator: Creator
+    name: str  # pk
+    created_by: Creator
     created_at: datetime
     updated_at: datetime
 
-class Token(BaseModel):
+class Token(BaseModel):  # unique: [("client_name", "name")]
     name: str
     client_name: str
-    creator: Creator
+    created_by: Creator
     created_at: datetime
     updated_at: datetime
 
 class User(BaseModel):
-    email: EmailStr
-    creator: Creator
+    email: EmailStr  # pk
+    created_by: Creator
     created_at: datetime
     updated_at: datetime
 ```
 
-### future datamodels
+### datamodels (coming soon)
 
 ```python
+class Attribute(BaseModel):
+    key: str
+    value: str
+
 class AuthProvider(BaseModel):
     id: str = Field(alias="_id")
     client_name: str  # the app name, e.g.: /osf/allai/chat/slack
     type: Literal["auth0", "azuread"]
     values: dict[str, str]
-    creator: Creator
+    created_by: Creator
+    created_at: datetime
+    updated_at: datetime
+
+class Organization(BaseModel):
+    id: str = hash[name]
+    name: str  # e.g.: /loreal or /osf
+    external_identifiers: list[Attribute]  # [{key: "auth0", value: "org-123456"}]
+    created_by: Creator
     created_at: datetime
     updated_at: datetime
 ```
