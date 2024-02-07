@@ -1,11 +1,11 @@
-from pydantic import EmailStr
-from redb.core import ClassField, CompoundIndex, Document, Index
-from redb.core.mixins import SwitcharooMixin
+from pydantic import EmailStr, computed_field
+from pymongo import IndexModel
+from redbaby.document import Document
 
 from ..schemas import Creator
 
 
-class UserDAO(Document, SwitcharooMixin):
+class UserDAO(Document):
     client_name: str
     created_by: Creator
     email: EmailStr
@@ -15,16 +15,16 @@ class UserDAO(Document, SwitcharooMixin):
         return "users"
 
     @classmethod
-    def get_indexes(cls) -> list[CompoundIndex]:
-        idxs = [CompoundIndex([cls.client_name, cls.email], unique=True)]  # type: ignore
+    def indexes(cls) -> list[IndexModel]:
+        idxs = [IndexModel([("client_name", 1), ("email", 1)], unique=True)]
         return idxs
 
-    @classmethod
-    def get_hashable_fields(cls) -> list[ClassField]:
-        return [cls.client_name, cls.email]  # type: ignore
+    @computed_field
+    def _id(self):
+        return str([self.client_name, self.email])
 
 
-class TokenDAO(Document, SwitcharooMixin):
+class TokenDAO(Document):
     client_name: str
     created_by: Creator
     name: str
@@ -35,16 +35,16 @@ class TokenDAO(Document, SwitcharooMixin):
         return "tokens"
 
     @classmethod
-    def get_indexes(cls) -> list[CompoundIndex]:
-        idxs = [CompoundIndex([cls.client_name, cls.name], unique=True)]  # type: ignore
+    def indexes(cls) -> list[IndexModel]:
+        idxs = [IndexModel([("client_name", 1), ("name", 1)], unique=True)]
         return idxs
 
-    @classmethod
-    def get_hashable_fields(cls) -> list[ClassField]:
-        return [cls.client_name, cls.name]  # type: ignore
+    @computed_field
+    def _id(self):
+        return str([self.client_name, self.name])
 
 
-class ClientDAO(Document, SwitcharooMixin):
+class ClientDAO(Document):
     created_by: Creator
     name: str
 
@@ -53,13 +53,13 @@ class ClientDAO(Document, SwitcharooMixin):
         return "clients"
 
     @classmethod
-    def get_indexes(cls) -> list[Index]:
-        idxs = [Index(cls.name, unique=True)]  # type: ignore
+    def get_indexes(cls) -> list[IndexModel]:
+        idxs = [IndexModel([(cls.name, 1)], unique=True)]
         return idxs
 
-    @classmethod
-    def get_hashable_fields(cls) -> list[ClassField]:
-        return [cls.name]  # type: ignore
+    @computed_field
+    def _id(self):
+        return str([self.name])
 
     class Config:
         schema_extra = {
