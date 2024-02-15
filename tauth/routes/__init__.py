@@ -6,6 +6,11 @@ from . import client, tokens, users
 def init_app(app: FastAPI) -> None:
     router = APIRouter(prefix="/api")
     router.include_router(get_router(None))
+    
+    @app.get("/", status_code=200, tags=["health"])
+    def _():
+        return {"status": "ok"}
+    
     app.include_router(router)
 
 
