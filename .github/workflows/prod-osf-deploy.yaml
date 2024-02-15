@@ -38,8 +38,8 @@ jobs:
       - name: Build and push to ECR
         uses: docker/build-push-action@v4
         with:
-          context: ./api
-          file: ./api/Dockerfile
+          context: ./
+          file: ./Dockerfile
           push: true
           target: run
           tags: "${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}"
