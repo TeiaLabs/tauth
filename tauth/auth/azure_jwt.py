@@ -13,7 +13,7 @@ from cachetools.func import ttl_cache
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from httpx import Client
-from pydantic import BaseSettings, root_validator
+from pydantic_settings import BaseSettings
 
 from ..schemas import Creator
 
