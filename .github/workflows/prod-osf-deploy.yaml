@@ -1,0 +1,48 @@
+name: osf-prod-deploy
+
+on:
+  push:
+    branches: ["osf-prod-deploy"]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.OSF_AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.OSF_AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: us-east-1
+
+  ECS_CLUSTER: allai-services
+  ECS_SERVICE: tauth-prod
+  REPOSITORY: 147431826892.dkr.ecr.us-east-1.amazonaws.com/tauth-prod
+  IMAGE_TAG: latest
+
+jobs:
+  build:
+    name: Deploy production image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Build and push to ECR
+        uses: docker/build-push-action@v4
+        with:
+          context: ./api
+          file: ./api/Dockerfile
+          push: true
+          target: run
+          tags: "${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}"
+
+      - name: Deploy on ECS
+        run: aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
