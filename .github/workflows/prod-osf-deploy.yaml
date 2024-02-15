@@ -34,6 +34,8 @@ jobs:
 
       - name: Checkout Repo
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Build and push to ECR
         uses: docker/build-push-action@v4
