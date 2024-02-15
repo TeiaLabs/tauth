@@ -10,8 +10,8 @@ from authlib.jose.errors import (
 )
 from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
 from cachetools.func import ttl_cache
-from fastapi.security.http import HTTPBase, HTTPAuthorizationCredentials
-from fastapi import Depends, FastAPI, Request, Security, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
+from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from httpx import Client
 from pydantic import BaseSettings, root_validator
 
@@ -29,9 +29,6 @@ class ADAuthSettings(BaseSettings):
             if k.startswith("AZURE") and not getattr(self, k):
                 raise ValueError(f"Variable {k} cannot be empty.")
         return True
-
-    class Config:
-        env_file = ".env"
 
 
 class TenantKeyStore:
