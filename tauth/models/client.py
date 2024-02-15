@@ -20,7 +20,7 @@ class UserDAO(Document):
         return idxs
 
     @computed_field
-    def _id(self):
+    def _id(self) -> str:
         return str([self.client_name, self.email])
 
 
@@ -40,7 +40,7 @@ class TokenDAO(Document):
         return idxs
 
     @computed_field
-    def _id(self):
+    def _id(self) -> str:
         return str([self.client_name, self.name])
 
 
@@ -53,12 +53,12 @@ class ClientDAO(Document):
         return "clients"
 
     @classmethod
-    def get_indexes(cls) -> list[IndexModel]:
-        idxs = [IndexModel([(cls.name, 1)], unique=True)]
+    def indexes(cls) -> list[IndexModel]:
+        idxs = [IndexModel([("name", 1)], unique=True)]
         return idxs
 
     @computed_field
-    def _id(self):
+    def _id(self) -> str:
         return str([self.name])
 
     class Config:
