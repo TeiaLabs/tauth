@@ -1,6 +1,5 @@
 authlib
 cachetools
-crypteia==1.0.1
 fastapi[all]
 http_error_schemas>=0.1.0
 httpx
@@ -9,5 +8,5 @@ pydantic[dotenv,email]
 pymongo
 python-dotenv
 python-multipart
-redbaby==1.0.0
+redbaby==1.0.1
 uvicorn
