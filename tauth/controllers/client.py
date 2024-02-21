@@ -12,7 +12,9 @@ from . import tokens, users
 def create_one(client_in: ClientCreation, creator: Creator) -> ClientDAO:
     client = ClientDAO(name=client_in.name, created_by=creator)
     try:
-        ClientDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).insert_one(client)
+        ClientDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).insert_one(
+            client.bson()
+        )
     except DuplicateKeyError as e:
         details = RequestValidationError(
             loc=["body", "name"],

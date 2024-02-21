@@ -9,24 +9,20 @@ from pymongo.database import Database
 from tauth.app import create_app
 from tauth.settings import Settings
 
-from .utils import (
-    validate_isostring,
-    validate_nonempty_string,
-    validate_token,
-)
+from .utils import validate_isostring, validate_nonempty_string, validate_token
 
 dotenv.load_dotenv()
 
 
 @pytest.fixture(scope="session")
 def mongo_client() -> MongoClient:
-    client = MongoClient(os.environ["TAUTH_MONGODB_URI"])
+    client = MongoClient(Settings.get().TAUTH_MONGODB_URI)
     return client
 
 
 @pytest.fixture(scope="session")
 def tauth_db(mongo_client: MongoClient) -> Database:
-    return mongo_client[os.environ["TAUTH_MONGODB_DBNAME"]]
+    return mongo_client[Settings.get().TAUTH_MONGODB_DBNAME]
 
 
 @pytest.fixture(scope="session")

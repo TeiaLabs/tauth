@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Body, HTTPException, Request, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
 
 from ..controllers import client as client_controller
 from ..controllers import tokens as token_controller
 from ..controllers import users as user_controller
+from ..injections import privileges
 from ..schemas import (
     ClientCreation,
     ClientCreationOut,
@@ -12,7 +13,6 @@ from ..schemas import (
     ClientOutJoinTokensAndUsers,
     Creator,
 )
-from ..injections import privileges
 from ..utils import validate_creation_access_level
 
 router = APIRouter(prefix="/clients")
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/clients")
 async def create_one(
     request: Request,
     client_in: ClientCreation = Body(),
-    creator: Creator = Depends(privileges.is_valid_admin)
+    creator: Creator = Depends(privileges.is_valid_admin),
 ) -> ClientCreationOut:
     """
     Create a new client.
@@ -39,7 +39,7 @@ async def create_one(
     )
     client_users = user_controller.read_many(client_name=client.name)
     out = ClientCreationOut(
-        **client.dict(),
+        **client.bson(),
         tokens=[token],
         users=client_users,
     )

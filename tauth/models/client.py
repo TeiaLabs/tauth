@@ -1,11 +1,12 @@
-from pydantic import EmailStr, computed_field
+from pydantic import EmailStr
 from pymongo import IndexModel
+from redbaby.behaviors.hashids import HashIdDoc
 from redbaby.document import Document
 
 from ..schemas import Creator
 
 
-class UserDAO(Document):
+class UserDAO(Document, HashIdDoc):
     client_name: str
     created_by: Creator
     email: EmailStr
@@ -19,12 +20,11 @@ class UserDAO(Document):
         idxs = [IndexModel([("client_name", 1), ("email", 1)], unique=True)]
         return idxs
 
-    @computed_field
-    def _id(self) -> str:
-        return str([self.client_name, self.email])
+    def hashable_fields(self) -> list[str]:
+        return [self.client_name, self.email]
 
 
-class TokenDAO(Document):
+class TokenDAO(Document, HashIdDoc):
     client_name: str
     created_by: Creator
     name: str
@@ -39,12 +39,11 @@ class TokenDAO(Document):
         idxs = [IndexModel([("client_name", 1), ("name", 1)], unique=True)]
         return idxs
 
-    @computed_field
-    def _id(self) -> str:
-        return str([self.client_name, self.name])
+    def hashable_fields(self) -> list[str]:
+        return [self.client_name, self.name]
 
 
-class ClientDAO(Document):
+class ClientDAO(Document, HashIdDoc):
     created_by: Creator
     name: str
 
@@ -57,14 +56,14 @@ class ClientDAO(Document):
         idxs = [IndexModel([("name", 1)], unique=True)]
         return idxs
 
-    @computed_field
-    def _id(self) -> str:
-        return str([self.name])
+    def hashable_fields(self) -> list[str]:
+        return [self.name]
 
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "examples": [
                 {"name": "/teialabs"},
-                {"name": "/teialabs/datasources"},
+                {"name": "/osf/allai"},
             ]
         }
+    }
