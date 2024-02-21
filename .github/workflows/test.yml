@@ -21,32 +21,35 @@ on:
       - ".github/workflows/test.yml"
 
 
-env:
-  TAUTH_MONGODB_URI: ${{ secrets.ATLAS_INTERNAL_MONGODB_URI }}
-  TAUTH_MONGODB_DBNAME: "tauth-github-actions"
-
 jobs:
   autotester:
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 2
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.11"
+          - python-version: "3.12"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: |
             requirements.txt
             requirements-test.txt
-      - name: Setup pip and pytest
-        run: |
+      - uses: supercharge/mongodb-github-action@1.10.0
+        with:
+          mongodb-version: 'latest'
+      - run: |
           python -m pip install --upgrade pip
           pip install -r requirements-test.txt
-      - name: Install.
-        run: |
+      - run: |
           pip install .
-      - name: Test.
+      - name: Run tests.
         working-directory: .
-        run: pytest ./tests/ --tb=no
+        run: pytest ./tests/ --tb=line --show-capture=no
