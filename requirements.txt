@@ -6,6 +6,7 @@ http_error_schemas>=0.1.0
 httpx
 multiformats
 pydantic[dotenv,email]
+pymongo
 python-dotenv
 python-multipart
 uvicorn
