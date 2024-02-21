@@ -18,7 +18,4 @@ updates:
     labels:
       - "dependencies"
     versioning-strategy: "increase"
-    ignore:
-      - dependency-name: "pydantic[dotenv,email]"
-      - dependency-name: "fastapi[all]"
     rebase-strategy: "auto"
