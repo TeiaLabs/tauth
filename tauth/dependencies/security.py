@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 
-from ..auth import auth0, azure_jwt, teia_api_key
+from ..auth import auth0, auth0_dyn, azure_jwt, teia_api_key
 from ..settings import Settings
 
 log = getLogger("tauth")
@@ -28,9 +28,15 @@ class RequestAuthenticator:
     @staticmethod
     def validate(
         request: Request,
-        user_email: str | None = Header(default=None, alias="X-User-Email", description="Ignore when using OAuth."),
-        id_token : str | None = Header(default=None, alias="X-ID-Token", description="Auth0 ID token."),
-        authorization: HTTPAuthorizationCredentials | None = Security(HTTPBase(scheme="bearer", auto_error=False)),
+        user_email: str | None = Header(
+            default=None, alias="X-User-Email", description="Ignore when using OAuth."
+        ),
+        id_token: str | None = Header(
+            default=None, alias="X-ID-Token", description="Auth0 ID token."
+        ),
+        authorization: HTTPAuthorizationCredentials | None = Security(
+            HTTPBase(scheme="bearer", auto_error=False)
+        ),
     ):
         # TODO: move empty header check to a subclass of HTTPBase
         req_path: str = request.scope["path"]
@@ -47,7 +53,9 @@ class RequestAuthenticator:
 
         token_type, token_value = authorization.scheme, authorization.credentials
         if token_type.lower() != "bearer":
-            raise HTTPException(401, detail={"msg": "Invalid authorization scheme; expected 'bearer'."})
+            raise HTTPException(
+                401, detail={"msg": "Invalid authorization scheme; expected 'bearer'."}
+            )
 
         if token_value.startswith("MELT_"):
             log.debug("Authenticating with a TEIA API key.")
@@ -57,6 +65,11 @@ class RequestAuthenticator:
         if Settings.get().ENABLE_AUTH0 and id_token is not None:
             log.debug("Authenticating with Auth0.")
             auth0.RequestAuthenticator.validate(request, token_value, id_token)
+            return
+
+        if Settings.get().ENABLE_AUTH2 and id_token is not None:
+            log.debug("Authenticating with Auth2.")
+            auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
             return
 
         if Settings.get().ENABLE_AZURE:

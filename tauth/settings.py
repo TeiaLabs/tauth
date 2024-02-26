@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     # Auth providers
     ENABLE_AUTH0: bool = False
+    ENABLE_AUTH2: bool = False
     ENABLE_AZURE: bool = False
 
     class Config:

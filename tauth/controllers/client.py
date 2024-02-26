@@ -1,14 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
 from redb.interface.errors import DocumentNotFound
 
 from ..models import ClientDAO
 from ..schemas import ClientCreation, ClientOut, ClientOutJoinTokensAndUsers, Creator
-from . import tokens, users
 from ..settings import Settings
-
-router = APIRouter(prefix="/tauth/clients")
+from . import tokens, users
 
 
 def create_one(client_in: ClientCreation, creator: Creator) -> ClientDAO:
@@ -19,7 +17,9 @@ def create_one(client_in: ClientCreation, creator: Creator) -> ClientDAO:
 
 def read_many(**kwargs) -> list[ClientOut]:
     filters = {k: v for k, v in kwargs.items() if v is not None}
-    clients = ClientDAO.switch_db(Settings.get().TAUTH_MONGODB_DBNAME).find_many(filter=filters)
+    clients = ClientDAO.switch_db(Settings.get().TAUTH_MONGODB_DBNAME).find_many(
+        filter=filters
+    )
     clients_view = [ClientOut(**client.dict()) for client in clients]
     return clients_view
 
@@ -27,7 +27,9 @@ def read_many(**kwargs) -> list[ClientOut]:
 def read_one(**kwargs) -> ClientOutJoinTokensAndUsers:
     filters = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        client = ClientDAO.switch_db(Settings.get().TAUTH_MONGODB_DBNAME).find_one(filter=filters)
+        client = ClientDAO.switch_db(Settings.get().TAUTH_MONGODB_DBNAME).find_one(
+            filter=filters
+        )
     except DocumentNotFound as e:
         details = RequestValidationError(
             loc=["path", "name"],
