@@ -13,6 +13,7 @@ from fastapi import HTTPException, Request
 from httpx import Client, HTTPError
 from pydantic import BaseSettings
 
+from ..organizations import controllers as org_controllers
 from ..schemas import Creator
 
 log = getLogger(__name__)
@@ -30,7 +31,7 @@ class Auth0Settings(BaseSettings):
 
 
 class ManyJSONKeyStore:
-    domains: dict[str, str] = {"/osf/allai/chat/webui": Auth0Settings().AUTH2_DOMAIN}
+    domains: dict[str, str] = {"/allai/chat/webui": Auth0Settings().AUTH2_DOMAIN}
 
     @classmethod
     @ttl_cache(maxsize=1, ttl=60 * 60 * 6)
@@ -65,7 +66,7 @@ class RequestAuthenticator:
 
     @staticmethod
     def validate(request: Request, token_value: str, id_token: str):
-        for client_name, j_w_k in ManyJSONKeyStore.get_jwks().items():
+        for app_name, j_w_k in ManyJSONKeyStore.get_jwks().items():
             try:
                 access_claims = jwt.decode(
                     token_value,
@@ -144,8 +145,16 @@ class RequestAuthenticator:
                     "type": "MissingRequiredClaim",
                 }
                 raise HTTPException(401, detail=d)
+            org_id = access_claims.get("auf")
+            if not org_id:
+                raise HTTPException(401, detail="Missing 'auf' (org-id) claim.")
+            org = org_controllers.read_one("/osf--auth0-auf", org_id)
+            if not org:
+                raise HTTPException(
+                    401, detail=f"Organization with id '{org_id}' not found."
+                )
             request.state.creator = Creator(
-                client_name=client_name,
+                client_name=org.name + app_name,
                 token_name="auth0-jwt",
                 user_email=user_email,
             )

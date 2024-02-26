@@ -38,10 +38,9 @@ async def read_many(
     external_id_key: Optional[str] = Query(None, alias="external_ids.key"),
     external_id_value: Optional[str] = Query(None, alias="external_ids.value"),
 ):
+
     orgs = controllers.read_many(
-        name=name,
         creator=creator,
-        external_id_key=external_id_key,
-        external_id_value=external_id_value,
+        **request.query_params,
     )
     return orgs
