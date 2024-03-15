@@ -145,10 +145,10 @@ class RequestAuthenticator:
                     "type": "MissingRequiredClaim",
                 }
                 raise HTTPException(401, detail=d)
-            org_id = access_claims.get("auf")
+            org_id = access_claims.get("org_id")
             if not org_id:
-                raise HTTPException(401, detail="Missing 'auf' (org-id) claim.")
-            org = org_controllers.read_one("/osf--auth0-auf", org_id)
+                raise HTTPException(401, detail="Missing 'org_id' claim.")
+            org = org_controllers.read_one("/osf--auth0-org-id", org_id)
             if not org:
                 raise HTTPException(
                     401, detail=f"Organization with id '{org_id}' not found."
