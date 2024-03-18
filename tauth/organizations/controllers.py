@@ -21,13 +21,14 @@ def read_many(creator: Creator, **filters) -> list[OrganizationDAO]:
     return objs  # type: ignore
 
 
-@lfu_cache(maxsize=128)
+# @lfu_cache(maxsize=128)
 def read_one(external_id_key: str, external_id_value: str) -> OrganizationDAO:
+    print(external_id_key, external_id_value)
     try:
         item = OrganizationDAO.switch_db(Settings.get().TAUTH_MONGODB_DBNAME).find_one(
             {
-                "externals_ids.key": external_id_key,
-                "externals_ids.value": external_id_value,
+                "external_ids.name": external_id_key,
+                "external_ids.value": external_id_value,
             }
         )
     except Exception:
