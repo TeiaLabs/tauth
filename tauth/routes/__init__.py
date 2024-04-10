@@ -1,6 +1,7 @@
 from fastapi import APIRouter, FastAPI
 
 from ..organizations import router as organizations_router
+from ..entities import router as entities_router
 from . import client, tokens, users
 
 
@@ -18,9 +19,10 @@ def init_app(app: FastAPI) -> None:
 def get_router(prefix: str | None) -> APIRouter:
     if prefix is None:
         prefix = __name__.split(".")[-2]
-    base_router = APIRouter(prefix=f"/{prefix}", tags=[prefix])
+    base_router = APIRouter(prefix=f"/{prefix}")
     base_router.include_router(client.router)
     base_router.include_router(tokens.router)
     base_router.include_router(users.router)
     base_router.include_router(organizations_router)
+    base_router.include_router(entities_router)
     return base_router

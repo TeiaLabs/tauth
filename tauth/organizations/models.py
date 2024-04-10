@@ -4,11 +4,7 @@ from redbaby.behaviors.hashids import HashIdMixin
 from redbaby.document import Document
 
 from ..schemas import Creator
-
-
-class Attribute(BaseModel):
-    name: str
-    value: str
+from ..schemas.attribute import Attribute
 
 
 class OrganizationDAO(Document, HashIdMixin):
