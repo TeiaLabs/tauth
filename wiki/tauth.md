@@ -77,15 +77,23 @@ class APIKey(SoftDeleteable):  # allows revocation
 - versioning (audit table needed)
 
 ```py
-class User(BaseModel):
+class Entity(BaseModel):
     created_at: datetime
     created_by: InfoStar
-    email: EmailStr  # PK
-    extra: list[Attribute]  # azuread-id, auth0-id, birthday # TODO: rename to ext-IDs
-    org_name: str  # /osf
-    roles: list[str]  # e.g.: ["teia-admin", "allai-user-basic"]
     updated_at: datetime
     updated_by: InfoStar
+    org_name: str
+    roles: list[str]  # e.g.: ["teia-admin", "allai-user-basic"]
+    external_ids: list[Attribute]  # e.g., url, azuread-id/auth0-id, ...
+    extra: list[Attribute]  # birthday
+
+class Service(Document, Entity):
+    id: str = hash[name, org_name]
+    name: str  # /athena/api, /meltingface/api, /datasources/api
+
+class User(Document, Entity):
+    id: str = hash[email, org_name]
+    email: EmailStr
 
 class UserData(Subtypeable):
     _id: Hash(email, name, type, value)
