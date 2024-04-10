@@ -5,20 +5,13 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 
-from ..auth import auth0, auth0_dyn, azure_jwt, teia_api_key
+from ..auth import auth0, auth0_dyn, azure_jwt, melt_api_key
 from ..settings import Settings
 
 log = getLogger("tauth")
 
 
 def init_app(app: FastAPI):
-    settings = Settings()
-    if settings.ENABLE_AUTH0:
-        m = f"{auth0.Auth0Settings.__fields__} must be set."
-        assert auth0.Auth0Settings().validate(), m
-    if settings.ENABLE_AZURE:
-        m = f"{azure_jwt.ADAuthSettings.__fields__} must be set."
-        assert azure_jwt.ADAuthSettings().validate(), m
     app.router.dependencies.append(Depends(RequestAuthenticator.validate))
 
 
@@ -59,22 +52,11 @@ class RequestAuthenticator:
 
         if token_value.startswith("MELT_"):
             log.debug("Authenticating with a TEIA API key.")
-            teia_api_key.RequestAuthenticator.validate(request, user_email, token_value)
+            melt_api_key.RequestAuthenticator.validate(request, user_email, token_value)
             return
-
-        if Settings.get().ENABLE_AUTH0 and id_token is not None:
-            log.debug("Authenticating with Auth0.")
-            auth0.RequestAuthenticator.validate(request, token_value, id_token)
-            return
-
-        if Settings.get().ENABLE_AUTH2 and id_token is not None:
-            log.debug("Authenticating with Auth2.")
-            auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
-            return
-
-        if Settings.get().ENABLE_AZURE:
-            log.debug("Authenticating with an Azure JWT.")
-            azure_jwt.RequestAuthenticator.validate(request, token_value)
-            return
+        # TODO: check if it starts with TAUTH_
+        # TODO: check if it's a JWT
+        # figure out which provider/iss it's from
+        # audience too
 
         raise HTTPException(401, detail={"msg": "No authentication method succeeded."})

@@ -2,6 +2,7 @@ from fastapi import APIRouter, FastAPI
 
 from ..organizations import router as organizations_router
 from ..entities import router as entities_router
+from ..authproviders import router as authproviders_router
 from . import client, tokens, users
 
 
@@ -25,4 +26,5 @@ def get_router(prefix: str | None) -> APIRouter:
     base_router.include_router(users.router)
     base_router.include_router(organizations_router)
     base_router.include_router(entities_router)
+    base_router.include_router(authproviders_router)
     return base_router

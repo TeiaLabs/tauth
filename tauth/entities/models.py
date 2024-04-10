@@ -11,13 +11,27 @@ from ..schemas.infostar import Infostar
 from ..utils.teia_behaviors import Authoring
 
 
-class EntityRef(BaseModel):
+class EntityRefBase(BaseModel):
     handle: str
     id: str
-    type: Literal["user", "service", "organization"]
+
+class EntityRef(EntityRefBase):
+    type: Literal["organization", "service", "user"]
 
 
-class EntityDAO(Document, Authoring, ReadingMixin):
+class OrganizationRef(EntityRefBase):
+    type: Literal["organization"]
+
+
+class ServiceRef(EntityRefBase):
+    type: Literal["service"]
+
+
+class UserRef(EntityRefBase):
+    type: Literal["user"]
+
+
+class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     external_ids: list[Attribute]  # e.g., url, azuread-id/auth0-id, ...
     extra: list[Attribute]
     handle: str
@@ -41,18 +55,3 @@ class EntityDAO(Document, Authoring, ReadingMixin):
             ),
         ]
         return idxs
-
-
-class ServiceDAO(EntityDAO, HashIdMixin):
-    handle: str  # /athena/api, /meltingface/api, /datasources/api
-    type: Literal["service"]
-
-
-class UserDAO(EntityDAO, HashIdMixin):
-    handle: str
-    type: Literal["user"]
-
-
-class OrganizationDAO(EntityDAO, HashIdMixin):
-    handle: str
-    type: Literal["organization"]
