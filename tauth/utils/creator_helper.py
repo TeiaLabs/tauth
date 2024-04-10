@@ -50,7 +50,7 @@ def create_user_on_db(creator: Creator, token_creator_email: Optional[EmailStr])
             ),
         )
         print(user.bson())
-        UserDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).insert_one(user.bson())
+        UserDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(user.bson())
     except DuplicateKeyError:
         pass
 

@@ -23,13 +23,17 @@ log = getLogger(__name__)
 class Auth0Settings(BaseSettings):
     AUTH0_DOMAIN: str = ""
     AUTH0_AUDIENCE: str = ""
+    ENABLE_AUTH0: bool = False
 
     def validate(self):
-        for k, v in self.model_fields.items():
-            if k.startswith("AUTH0") and not getattr(self, k):
-                raise ValueError(f"Variable {k} cannot be empty.")
+        if self.ENABLE_AUTH0:
+            for k, v in self.model_fields.items():
+                if k.startswith("AUTH0") and not getattr(self, k):
+                    raise ValueError(f"Variable {k} cannot be empty.")
         return True
-
+    model_config = {
+        "extra": "ignore"
+    }
 
 class JSONKeyStore:
     domain: str = Auth0Settings().AUTH0_DOMAIN

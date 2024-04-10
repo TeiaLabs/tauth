@@ -12,4 +12,4 @@ def init_app(sets: Settings):
         alias="tauth",
     )
     for m in Document.__subclasses__():
-        m.create_indexes()
+        m.create_indexes(alias="tauth")

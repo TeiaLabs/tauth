@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, Query, Request
@@ -9,7 +10,8 @@ from ..utils import validate_creation_access_level
 from . import controllers
 from .schemas import GeneratedFields, OrganizationIn
 
-router = APIRouter(prefix="/organizations")
+service_name = Path(__file__).parent.name
+router = APIRouter(prefix=f"/{service_name}", )
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)
@@ -26,7 +28,7 @@ async def create_one(
     """
     validate_creation_access_level(org_in.name, creator.client_name)
     org = controllers.create_one(org_in, creator)
-    return GeneratedFields(**org.dict())
+    return GeneratedFields(**org.model_dump(by_alias=True))
 
 
 @router.get("", status_code=s.HTTP_200_OK)
@@ -38,7 +40,6 @@ async def read_many(
     external_id_key: Optional[str] = Query(None, alias="external_ids.key"),
     external_id_value: Optional[str] = Query(None, alias="external_ids.value"),
 ):
-
     orgs = controllers.read_many(
         creator=creator,
         **request.query_params,

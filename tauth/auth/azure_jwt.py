@@ -29,6 +29,9 @@ class ADAuthSettings(BaseSettings):
             if k.startswith("AZURE") and not getattr(self, k):
                 raise ValueError(f"Variable {k} cannot be empty.")
         return True
+    model_config = {
+        "extra": "ignore"
+    }
 
 
 class TenantKeyStore:

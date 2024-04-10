@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # mongodb
     TAUTH_MONGODB_DBNAME: str = "tauth"
     TAUTH_MONGODB_URI: str = "mongodb://localhost:27017/"
+    TAUTH_REDBABY_ALIAS: str = "tauth"
 
     # Auth providers
     ENABLE_AUTH0: bool = False

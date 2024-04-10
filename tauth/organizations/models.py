@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
-from redb.core import ClassField, CompoundIndex, Document, Index
-from redb.core.mixins import SwitcharooMixin
+from pymongo import IndexModel
+from redbaby.behaviors.hashids import HashIdMixin
+from redbaby.document import Document
 
 from ..schemas import Creator
 
@@ -10,23 +11,22 @@ class Attribute(BaseModel):
     value: str
 
 
-class OrganizationDAO(Document, SwitcharooMixin):
-    name: str  # /loreal or /nike
+class OrganizationDAO(Document, HashIdMixin):
+    name: str
     created_by: Creator
     external_ids: list[Attribute] = Field(default_factory=list)
+
+    def hashable_fields(self) -> list[str]:
+        return [self.name]
 
     @classmethod
     def collection_name(cls) -> str:
         return "organizations"
 
     @classmethod
-    def get_indexes(cls) -> list[Index | CompoundIndex]:
+    def indexes(cls) -> list[IndexModel]:
         idxs = [
-            Index(cls.name, unique=True),  # type: ignore
-            CompoundIndex([cls.external_ids[0].name, cls.external_ids[0].value], unique=True),  # type: ignore
+            IndexModel("name", unique=True),
+            IndexModel([("external_ids.name", 1), ("external_ids.value", 1)], unique=True),
         ]
         return idxs
-
-    @classmethod
-    def get_hashable_fields(cls) -> list[ClassField]:
-        return [cls.name]  # type: ignore
