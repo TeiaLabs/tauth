@@ -8,6 +8,7 @@ from multiformats import multibase
 from pydantic import validate_email
 
 from ..schemas import Creator
+from ..schemas import Infostar
 from ..settings import Settings
 from ..utils.access_helper import sanitize_client_name
 from ..utils.creator_helper import create_user_on_db, validate_token_against_db
@@ -21,12 +22,19 @@ class RequestAuthenticator:
         user_email: str | None,
         api_key_header: str,
     ):
-        creator = get_request_infostar(token=api_key_header, user_email=user_email)
+        creator, token_creator_email = get_request_creator(token=api_key_header, user_email=user_email)
+        # infostar = get_request_infostar(creator, token_creator_email, request)
         if request.client is not None:
             creator.user_ip = request.client.host
         if request.headers.get("x-forwarded-for"):
             creator.user_ip = request.headers["x-forwarded-for"]
         request.state.creator = creator
+
+
+# def get_request_infostar(creator: Creator, token_creator_email: str, request: Request):
+#     infostar = Infostar(
+#     )
+#     return infostar
 
 
 def parse_token(token_value: str) -> tuple[str, str, str]:
@@ -51,7 +59,7 @@ def create_token(client_name: str, token_name: str):
     return fmt_token_value
 
 
-def get_request_infostar(token: str, user_email: Optional[str]):
+def get_request_creator(token: str, user_email: Optional[str]):
     client_name, token_name, _ = parse_token(token)
     client_name = sanitize_client_name(client_name)
     token_creator_user_email = None
@@ -86,4 +94,4 @@ def get_request_infostar(token: str, user_email: Optional[str]):
         user_email=request_creator_user_email,
     )
     create_user_on_db(creator, token_creator_user_email)
-    return creator
+    return creator, token_obj.created_by.user_email

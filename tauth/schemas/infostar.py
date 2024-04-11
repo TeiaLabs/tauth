@@ -1,14 +1,18 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, EmailStr
+from redbaby.pyobjectid import PyObjectId
 
+from ..authproviders.schemas import AuthProviderRef
 
 class Infostar(BaseModel):
-    client_name: str  # /osf/allai/code/extension
-    extra: dict[str, str]  # e.g.: user-agent,
-    human: bool  # differentiates between machine and human users
-    org_name: str  # /teialabs
+    request_id: PyObjectId  # will be propagated across all services
+    auth_token_name: str  # JWT generic name (e.g., osf-auth0) or specific api key name (nei.workstation.homeoffice)
+    authprovider_ref: AuthProviderRef  # {id, organizaion_ref, service_ref, type}
+    extra: dict[str, str]  # e.g.: user-agent, OS, url (reverse dns), geolocation, JWT sub
+    app_name: str  # e.g., /osf/allai/code
+    user_email: EmailStr  # email
+    user_owner: str  # e.g., organization, user family, ...
+    client_ip: str
+
     original: Optional["Infostar"]  # if any attributes were overriden
-    token_name: str  # nei.workstation.homeoffice
-    user_email: EmailStr  # nei@teialabs.com
-    user_ip: str  # 170.0.0.69

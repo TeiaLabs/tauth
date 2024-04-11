@@ -10,3 +10,4 @@ from .clients import (
     UserOut,
     TokenMeta,
 )
+from .infostar import Infostar
