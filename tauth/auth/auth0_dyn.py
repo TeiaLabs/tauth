@@ -1,44 +1,53 @@
 from logging import getLogger
+from typing import Self
 
 from authlib.jose import jwt
-from authlib.jose.errors import (ExpiredTokenError, InvalidClaimError,
-                                 InvalidTokenError, MissingClaimError)
+from authlib.jose.errors import (
+    ExpiredTokenError,
+    InvalidClaimError,
+    InvalidTokenError,
+    MissingClaimError,
+)
 from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
 from cachetools.func import ttl_cache
 from fastapi import HTTPException, Request
 from httpx import Client, HTTPError
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 
+from ..authproviders.models import AuthProviderDAO
+from ..controllers import reading
 from ..organizations import controllers as org_controllers
 from ..schemas import Creator
 
 log = getLogger(__name__)
 
 
-class Auth0Settings(BaseSettings):
-    AUTH2_DOMAIN: str = ""
-    AUTH2_AUDIENCE: str = ""
+class Auth0Settings(BaseModel):
+    domain: str
+    audience: str
 
-    AUTH3_DOMAIN: str = ""
-    AUTH3_AUDIENCE: str = ""
+    @classmethod
+    def from_authprovider(cls, authprovider: AuthProviderDAO) -> Self:
+        iss = authprovider.get_external_id("issuer")
+        if not iss:
+            raise ValueError("Missing 'issuer' attribute.")
+        aud = authprovider.get_external_id("audience")
+        if not aud:
+            raise ValueError("Missing 'audience' attribute.")
+        return cls(domain=iss, audience=aud)
 
-    def validate(self):
-        return True
 
-    model_config = {
-        "extra": "ignore"
-    }
+def get_auth0_providers() -> list[AuthProviderDAO]:
+    items = reading.read_many(
+        creator={}, filters={"type": "auth0"}, model=AuthProviderDAO
+    )
+    return items
 
 
 class ManyJSONKeyStore:
-    sets = Auth0Settings()
-    domains: dict[str, tuple[str, str]] = {
-        "/athena/chat/webui": (sets.AUTH3_DOMAIN, sets.AUTH3_AUDIENCE),
-        "/allai/chat/webui": (sets.AUTH2_DOMAIN, sets.AUTH2_AUDIENCE),
-    }
 
     @classmethod
-    @ttl_cache(maxsize=1, ttl=60 * 60 * 6)
+    @ttl_cache(maxsize=16, ttl=60 * 60 * 6)
     def get_jwk(cls, domain: str) -> KeySet:
         log.debug("Fetching JWK.")
         with Client() as client:
@@ -53,7 +62,6 @@ class ManyJSONKeyStore:
 
 
 class RequestAuthenticator:
-    settings = Auth0Settings()
 
     @staticmethod
     def get_id_claims(domain: str) -> dict:
@@ -74,17 +82,16 @@ class RequestAuthenticator:
 
     @staticmethod
     def validate(request: Request, token_value: str, id_token: str):
-        for i, (app_name, (domain, audience)) in enumerate(
-            ManyJSONKeyStore.domains.items()
-        ):
-            print(app_name, domain, audience)
-            j_w_k = ManyJSONKeyStore.get_jwk(domain)
+        auth0_providers = get_auth0_providers()
+        for i, authprovider in enumerate(auth0_providers):
+            sets = Auth0Settings.from_authprovider(authprovider)
+            j_w_k = ManyJSONKeyStore.get_jwk(sets.domain)
             try:
                 access_claims = jwt.decode(
                     token_value,
                     j_w_k,
                     claims_options=RequestAuthenticator.get_access_claims(
-                        domain, audience
+                        sets.domain, sets.audience
                     ),
                 )
                 access_claims.validate()
@@ -94,7 +101,7 @@ class RequestAuthenticator:
                 InvalidTokenError,
                 MissingClaimError,
             ) as e:
-                if i == len(ManyJSONKeyStore.domains) - 1:
+                if i == len(auth0_providers) - 1:
                     raise HTTPException(
                         401,
                         detail={
@@ -105,7 +112,7 @@ class RequestAuthenticator:
                     )
                 continue
             except Exception as e:
-                if i == len(ManyJSONKeyStore.domains) - 1:
+                if i == len(auth0_providers) - 1:
                     raise HTTPException(
                         401,
                         detail={
@@ -119,7 +126,7 @@ class RequestAuthenticator:
                 id_claims = jwt.decode(
                     id_token,
                     j_w_k,
-                    claims_options=RequestAuthenticator.get_id_claims(domain),
+                    claims_options=RequestAuthenticator.get_id_claims(sets.domain),
                 )
                 id_claims.validate()
             except (
@@ -128,7 +135,7 @@ class RequestAuthenticator:
                 InvalidTokenError,
                 ExpiredTokenError,
             ) as e:
-                if i == len(ManyJSONKeyStore.domains) - 1:
+                if i == len(auth0_providers) - 1:
                     raise HTTPException(
                         401,
                         detail={
@@ -139,7 +146,7 @@ class RequestAuthenticator:
                     )
                 continue
             except Exception as e:
-                if i == len(ManyJSONKeyStore.domains) - 1:
+                if i == len(auth0_providers) - 1:
                     raise HTTPException(
                         401,
                         detail={
@@ -176,7 +183,7 @@ class RequestAuthenticator:
                     401, detail=f"Organization with id '{org_id}' not found."
                 )
             request.state.creator = Creator(
-                client_name=org.name + app_name,
+                client_name=org.name + authprovider.service_ref.handle,
                 token_name="auth0-jwt",
                 user_email=user_email,
             )
