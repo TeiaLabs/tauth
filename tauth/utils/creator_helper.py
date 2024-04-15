@@ -19,7 +19,7 @@ EmailStr = str
 @lru_cache(maxsize=32)
 def validate_token_against_db(token: str, client_name: str, token_name: str):
     filters = {"client_name": client_name, "name": token_name}
-    entity = TokenDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).find_one(
+    entity = TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find_one(
         filter=filters
     )
     if not entity:
@@ -50,7 +50,9 @@ def create_user_on_db(creator: Creator, token_creator_email: Optional[EmailStr])
             ),
         )
         print(user.bson())
-        UserDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(user.bson())
+        UserDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(
+            user.bson()
+        )
     except DuplicateKeyError:
         pass
 

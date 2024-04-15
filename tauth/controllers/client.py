@@ -12,7 +12,7 @@ from . import tokens, users
 def create_one(client_in: ClientCreation, creator: Creator) -> ClientDAO:
     client = ClientDAO(name=client_in.name, created_by=creator)
     try:
-        ClientDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).insert_one(
+        ClientDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(
             client.bson()
         )
     except DuplicateKeyError as e:
@@ -27,7 +27,7 @@ def create_one(client_in: ClientCreation, creator: Creator) -> ClientDAO:
 
 def read_many(**kwargs) -> list[ClientOut]:
     filters = {k: v for k, v in kwargs.items() if v is not None}
-    clients = ClientDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).find(
+    clients = ClientDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find(
         filter=filters
     )
     clients_view = [ClientOut(**client) for client in clients]
@@ -36,7 +36,7 @@ def read_many(**kwargs) -> list[ClientOut]:
 
 def read_one(**kwargs) -> ClientOutJoinTokensAndUsers:
     filters = {k: v for k, v in kwargs.items() if v is not None}
-    client = ClientDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).find_one(
+    client = ClientDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find_one(
         filter=filters
     )
     if client is None:
