@@ -1,11 +1,12 @@
 from logging import getLogger
-from typing import Self
+from typing import Optional, Self
 
 from authlib.jose import jwt
 from authlib.jose.errors import (
     ExpiredTokenError,
     InvalidClaimError,
     InvalidTokenError,
+    JoseError,
     MissingClaimError,
 )
 from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
@@ -35,13 +36,6 @@ class Auth0Settings(BaseModel):
         if not aud:
             raise ValueError("Missing 'audience' attribute.")
         return cls(domain=iss, audience=aud)
-
-
-def get_auth0_providers() -> list[AuthProviderDAO]:
-    items = reading.read_many(
-        creator={}, filters={"type": "auth0"}, model=AuthProviderDAO
-    )
-    return items
 
 
 class ManyJSONKeyStore:
@@ -81,115 +75,135 @@ class RequestAuthenticator:
         return access_claims_options
 
     @staticmethod
-    def validate(request: Request, token_value: str, id_token: str):
-        auth0_providers = get_auth0_providers()
-        for i, authprovider in enumerate(auth0_providers):
-            sets = Auth0Settings.from_authprovider(authprovider)
-            j_w_k = ManyJSONKeyStore.get_jwk(sets.domain)
-            try:
-                access_claims = jwt.decode(
-                    token_value,
-                    j_w_k,
-                    claims_options=RequestAuthenticator.get_access_claims(
-                        sets.domain, sets.audience
-                    ),
-                )
-                access_claims.validate()
-            except (
-                ExpiredTokenError,
-                InvalidClaimError,
-                InvalidTokenError,
-                MissingClaimError,
-            ) as e:
-                if i == len(auth0_providers) - 1:
-                    raise HTTPException(
-                        401,
-                        detail={
-                            "loc": ["headers", "Authorization"],
-                            "msg": e.description,
-                            "type": e.error,
-                        },
-                    )
-                continue
-            except Exception as e:
-                if i == len(auth0_providers) - 1:
-                    raise HTTPException(
-                        401,
-                        detail={
-                            "loc": ["headers", "Authorization"],
-                            "msg": str(e),
-                            "type": type(e).__name__,
-                        },
-                    )
-                continue
-            try:
-                id_claims = jwt.decode(
-                    id_token,
-                    j_w_k,
-                    claims_options=RequestAuthenticator.get_id_claims(sets.domain),
-                )
-                id_claims.validate()
-            except (
-                MissingClaimError,
-                InvalidClaimError,
-                InvalidTokenError,
-                ExpiredTokenError,
-            ) as e:
-                if i == len(auth0_providers) - 1:
-                    raise HTTPException(
-                        401,
-                        detail={
-                            "loc": ["headers", "X-ID-Token"],
-                            "msg": e.description,
-                            "type": e.error,
-                        },
-                    )
-                continue
-            except Exception as e:
-                if i == len(auth0_providers) - 1:
-                    raise HTTPException(
-                        401,
-                        detail={
-                            "loc": ["headers", "X-ID-Token"],
-                            "msg": str(e),
-                            "type": type(e).__name__,
-                        },
-                    )
-                continue
-            user_id = id_claims.get("sub")
-            if not user_id:
-                raise HTTPException(
-                    401,
-                    detail={
-                        "loc": ["headers", "X-ID-Token"],
-                        "msg": "Missing 'sub' claim.",
-                        "type": "MissingRequiredClaim",
-                    },
-                )
-            user_email = id_claims.get("email")
-            if not user_email:
-                d = {
-                    "loc": ["headers", "X-ID-Token"],
-                    "msg": "Missing 'email' claim.",
-                    "type": "MissingRequiredClaim",
-                }
-                raise HTTPException(401, detail=d)
-            org_id = access_claims.get("org_id")
-            if not org_id:
-                raise HTTPException(401, detail="Missing 'org_id' claim.")
-            org = org_controllers.read_one({"$regex": r"/.*--auth0-org-id"}, org_id)  # type: ignore
-            if not org:
-                raise HTTPException(
-                    401, detail=f"Organization with id '{org_id}' not found."
-                )
-            request.state.creator = Creator(
-                client_name=org.name + authprovider.service_ref.handle,
-                token_name="auth0-jwt",
-                user_email=user_email,
+    def get_authprovider(token_value: str) -> list[AuthProviderDAO]:
+        jwt_header = get_unverified_claims(token_value)  # TODO
+        filters = {"type": "auth0"}
+        if iss := jwt_header.get("iss"):
+            filters["external_ids.issuer"] = iss
+        if aud := jwt_header.get("aud"):
+            filters["external_ids.audience"] = aud
+        providers = reading.read_many(creator={}, model=AuthProviderDAO, **filters)
+        if not providers:
+            raise HTTPException(
+                401,
+                detail={
+                    "loc": ["headers", "Authorization"],
+                    "msg": f"No Auth0 provider found .",
+                    "type": "NoAuthProviderFound",
+                    "filters": filters,
+                },
             )
-            # TODO: forward user IP using a header?
-            if request.client is not None:
-                request.state.creator.user_ip = request.client.host
-            if request.headers.get("x-forwarded-for"):
-                request.state.creator.user_ip = request.headers["x-forwarded-for"]
+        return providers
+
+    @staticmethod
+    def validate_access_token(
+        token_value: str, authprovider: AuthProviderDAO
+    ) -> dict | JoseError:
+        sets = Auth0Settings.from_authprovider(authprovider)
+        j_w_k = ManyJSONKeyStore.get_jwk(sets.domain)
+        try:
+            access_claims = jwt.decode(
+                token_value,
+                j_w_k,
+                claims_options=RequestAuthenticator.get_access_claims(
+                    sets.domain, sets.audience
+                ),
+            )
+            access_claims.validate()
+        except (
+            ExpiredTokenError,
+            InvalidClaimError,
+            InvalidTokenError,
+            MissingClaimError,
+        ) as e:
+            # TODO log e.error, e.description, e.uri
+            # short-string error code
+            # long-string to describe this error
+            # web page that describes this error
+            return e
+        return access_claims
+
+    @staticmethod
+    def validate_id_token(token_value: str, authprovider: AuthProviderDAO) -> dict:
+        sets = Auth0Settings.from_authprovider(authprovider)
+        j_w_k = ManyJSONKeyStore.get_jwk(sets.domain)
+        id_claims = jwt.decode(
+            token_value,
+            j_w_k,
+            claims_options=RequestAuthenticator.get_id_claims(sets.domain),
+        )
+        id_claims.validate()
+        return id_claims
+
+    @staticmethod
+    def assemble_user_data(access_claims, id_claims) -> dict:
+        required_access = ["org_id"]
+        required_id = ["sub", "email"]
+        for required_claims, claims in zip([required_access, required_id], (access_claims, id_claims)):
+            for c in required_claims:
+                if c not in claims:
+                    raise HTTPException(
+                        401,
+                        detail={
+                            "loc": ["headers", "X-ID-Token" if claims == id_claims else "Authorization"],
+                            "msg": f"Missing '{c}' claim.",
+                            "type": "MissingRequiredClaim",
+                        },
+                    )
+        user_data = {
+            "user_id": id_claims.get("sub"),
+            "user_email": id_claims.get("email"),
+            "org_id": access_claims.get("org_id"),
+        }
+        return user_data
+
+    @classmethod
+    def validate(cls, request: Request, token_value: str, id_token: str):
+        auth0_providers = cls.get_authprovider(token_value)
+        if len(auth0_providers) >= 1:
+            print("Bad. Don't.")
             return
+        else:
+            authprovider = auth0_providers[0]
+        result = cls.validate_access_token(token_value, authprovider)
+        if isinstance(result, JoseError):
+            raise HTTPException(
+                401,
+                detail={
+                    "loc": ["headers", "Authorization"],
+                    "msg": result.description,
+                    "type": result.error,
+                },
+            )
+        else:
+            access_claims = result
+        result = cls.validate_id_token(id_token, authprovider)
+        if isinstance(result, JoseError):
+            raise HTTPException(
+                401,
+                detail={
+                    "loc": ["headers", "X-ID-Token"],
+                    "msg": result.description,
+                    "type": result.error,
+                },
+            )
+        else:
+            id_claims = result
+        user_data = cls.assemble_user_data(access_claims, id_claims)
+        org = org_controllers.read_one({"$regex": r"/.*--auth0-org-id"}, org_id)  # type: ignore
+        if not org:
+            raise HTTPException(
+                401, detail=f"Organization with id '{user_data["org_id"]}' not found."
+            )
+        request.state.creator = Creator(
+            client_name=org.name
+            + authprovider.service_ref.handle,  # TODO check if it's None beforehadn
+            token_name="auth0-jwt",
+            user_email=user_data["user_email"],
+        )
+        # TODO: forward user IP using a header?
+        if request.client is not None:
+            request.state.creator.user_ip = request.client.host
+        if request.headers.get("x-forwarded-for"):
+            request.state.creator.user_ip = request.headers["x-forwarded-for"]
+        return

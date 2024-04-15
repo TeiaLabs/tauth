@@ -9,8 +9,8 @@ from ..authproviders.schemas import AuthProviderRef
 class InfostarExtra(TypedDict, total=False):
     geolocation: str
     jwt_sub: str
-    os: str  # reverse dns
-    url: str
+    os: str
+    url: str  # reverse dns
     user_agent: str
 
 
