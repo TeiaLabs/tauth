@@ -78,10 +78,9 @@ class RequestAuthenticator:
     def get_authprovider(token_value: str) -> list[AuthProviderDAO]:
         jwt_header = get_unverified_claims(token_value)  # TODO
         filters = {"type": "auth0"}
-        if iss := jwt_header.get("iss"):
-            filters["external_ids.issuer"] = iss
         if aud := jwt_header.get("aud"):
-            filters["external_ids.audience"] = aud
+            filters["external_ids.name"] = "audience"
+            filters["external_ids.value"] = aud
         providers = reading.read_many(creator={}, model=AuthProviderDAO, **filters)
         if not providers:
             raise HTTPException(
