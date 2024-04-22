@@ -29,7 +29,7 @@ def validate_token_against_db(token: str, client_name: str, token_name: str):
             "type": "DocumentNotFound",
         }
         raise HTTPException(status_code=s.HTTP_401_UNAUTHORIZED, detail=d)
-    if not secrets.compare_digest(token, entity.value):
+    if not secrets.compare_digest(token, entity["value"]):
         code, m = s.HTTP_401_UNAUTHORIZED, "Token does not match."
         raise HTTPException(status_code=code, detail={"msg": m})
     return entity
