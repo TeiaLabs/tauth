@@ -155,6 +155,26 @@ class RequestAuthenticator:
             "org_id": access_claims.get("org_id"),
         }
         return user_data
+    
+    @staticmethod
+    def assemble_creator(user_data: dict, authprovider: AuthProviderDAO) -> Creator:
+        if authprovider.service_ref is None:
+            raise HTTPException(
+                401,
+                detail={"msg": "Authprovider has no service reference.", "details": authprovider.model_dump()},
+            )
+        org = org_controllers.read_one({"$regex": r"/.*--auth0-org-id"}, user_data["org_id"])
+        if not org:
+            raise HTTPException(
+                401, detail=f"Organization with id '{user_data['org_id']}' not found."
+            )
+        c = Creator(
+            client_name=org["name"]
+            + authprovider.service_ref.handle,
+            token_name="auth0-jwt",
+            user_email=user_data["user_email"],
+        )
+        return c
 
     @classmethod
     def validate(cls, request: Request, token_value: str, id_token: str):
@@ -189,17 +209,7 @@ class RequestAuthenticator:
         else:
             id_claims = result
         user_data = cls.assemble_user_data(access_claims, id_claims)
-        org = org_controllers.read_one({"$regex": r"/.*--auth0-org-id"}, org_id)  # type: ignore
-        if not org:
-            raise HTTPException(
-                401, detail=f"Organization with id '{user_data["org_id"]}' not found."
-            )
-        request.state.creator = Creator(
-            client_name=org.name
-            + authprovider.service_ref.handle,  # TODO check if it's None beforehadn
-            token_name="auth0-jwt",
-            user_email=user_data["user_email"],
-        )
+        request.state.creator = cls.assemble_creator(user_data, authprovider)
         # TODO: forward user IP using a header?
         if request.client is not None:
             request.state.creator.user_ip = request.client.host
