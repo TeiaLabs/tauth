@@ -15,7 +15,7 @@ from ..schemas import (
 )
 from ..utils import validate_creation_access_level
 
-router = APIRouter(prefix="/clients")
+router = APIRouter(prefix="/clients", tags=["legacy"])
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)

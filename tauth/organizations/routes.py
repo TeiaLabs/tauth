@@ -12,7 +12,7 @@ from . import controllers
 from .schemas import OrganizationIn
 
 service_name = Path(__file__).parent.name
-router = APIRouter(prefix=f"/{service_name}", tags=[service_name])
+router = APIRouter(prefix=f"/{service_name}", tags=["legacy"])
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)

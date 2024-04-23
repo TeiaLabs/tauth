@@ -8,7 +8,7 @@ from ..models import TokenDAO
 from ..schemas import Creator, TokenCreationOut
 from ..utils.access_helper import sanitize_client_name
 
-router = APIRouter(prefix="/clients")
+router = APIRouter(prefix="/clients", tags=["legacy"])
 
 
 @router.post("/{client_name:path}/tokens", status_code=s.HTTP_201_CREATED)

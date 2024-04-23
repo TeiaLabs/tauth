@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Path, Request, Depends
+from fastapi import APIRouter, Depends, Path, Request
 
 from ..controllers import users as user_controller
 from ..injections import privileges
 from ..schemas import Creator, UserOut
 
-router = APIRouter(prefix="/clients")
+router = APIRouter(prefix="/clients", tags=["legacy"])
 
 
 @router.get("/{name}/users", status_code=200)
