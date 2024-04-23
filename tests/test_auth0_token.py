@@ -7,8 +7,8 @@ from tauth.auth.auth0_dyn import RequestAuthenticator
 
 
 class AuthProviderMock:
-    def get_external_id(self, *_) -> Self:
-        return "test"
+    def get_external_id(self, *_) -> str:
+        return "https://test/"
 
 
 class StateMock:
@@ -35,7 +35,7 @@ class RequestMock:
 
 def test_auth0_dyn(access_token: str, id_token: str, jwk: dict, mocker: MockerFixture):
     provider_target_fn = "tauth.auth.auth0_dyn.RequestAuthenticator.get_authprovider"
-    mocker.patch(target=provider_target_fn, new=lambda *_, **__: [AuthProviderMock])
+    mocker.patch(target=provider_target_fn, new=lambda *_, **__: AuthProviderMock)
 
     jwk_target_fn = "tauth.auth.auth0_dyn.ManyJSONKeyStore.get_jwk"
     mocker.patch(
@@ -44,8 +44,5 @@ def test_auth0_dyn(access_token: str, id_token: str, jwk: dict, mocker: MockerFi
 
     request = RequestMock()
 
-    try:
-        RequestAuthenticator.validate(request, access_token, id_token)
-        assert True
-    except Exception as e:
-        assert False, str(e)
+    RequestAuthenticator.validate(request, access_token, id_token)
+    assert True

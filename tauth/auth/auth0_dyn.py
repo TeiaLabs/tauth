@@ -1,7 +1,6 @@
 from logging import getLogger
 from typing import Any, Self
 
-import jwt as pyjwt
 from authlib.jose import jwt
 from authlib.jose.errors import (
     ExpiredTokenError,
@@ -15,6 +14,8 @@ from cachetools.func import ttl_cache
 from fastapi import HTTPException, Request
 from httpx import Client, HTTPError
 from pydantic import BaseModel
+
+import jwt as pyjwt
 
 from ..authproviders.models import AuthProviderDAO
 from ..controllers import reading
