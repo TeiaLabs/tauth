@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 
-from ..auth import auth0, auth0_dyn, azure_jwt, melt_api_key
+from ..auth import auth0_dyn, melt_api_key
 from ..settings import Settings
 
 log = getLogger("tauth")
@@ -54,9 +54,13 @@ class RequestAuthenticator:
             log.debug("Authenticating with a TEIA API key.")
             melt_api_key.RequestAuthenticator.validate(request, user_email, token_value)
             return
+        if id_token is None:
+            raise HTTPException(401, detail={"msg": "Missing ID token."})
+        else:
+            # figure out which provider/iss it's from
+            auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
+            return
         # TODO: check if it starts with TAUTH_
         # TODO: check if it's a JWT
-        # figure out which provider/iss it's from
-        # audience too
 
         raise HTTPException(401, detail={"msg": "No authentication method succeeded."})

@@ -9,7 +9,7 @@ def init_app(sets: Settings):
     DB.add_conn(
         db_name=sets.TAUTH_MONGODB_DBNAME,
         uri=sets.TAUTH_MONGODB_URI,
-        alias="tauth",
+        alias=Settings.get().TAUTH_REDBABY_ALIAS,
     )
     for m in Document.__subclasses__():
-        m.create_indexes(alias="tauth")
+        m.create_indexes(alias=Settings.get().TAUTH_REDBABY_ALIAS)

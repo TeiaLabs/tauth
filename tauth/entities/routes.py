@@ -4,13 +4,13 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi import status as s
 
+from ..controllers import creation, reading
 from ..injections import privileges
 from ..schemas import Creator
-from ..utils import validate_creation_access_level
-from ..controllers import creation, reading
-from .schemas import EntityIn
-from .models import EntityDAO
 from ..schemas.gen_fields import GeneratedFields
+from ..utils import validate_creation_access_level
+from .models import EntityDAO
+from .schemas import EntityIn, EntityIntermediate
 
 service_name = Path(__file__).parent.name
 router = APIRouter(prefix=f"/{service_name}", tags=[service_name])
@@ -20,12 +20,17 @@ router = APIRouter(prefix=f"/{service_name}", tags=[service_name])
 @router.post("/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def create_one(
     request: Request,
-    entity_in: EntityIn = Body(),
+    body: EntityIn = Body(),
     creator: Creator = Depends(privileges.is_valid_admin),
 ):
     # validate_creation_access_level(org_in.name, creator.client_name)  # TODO implement this
-    org = creation.create_one(entity_in, EntityDAO, creator)
-    return GeneratedFields(**org.model_dump(by_alias=True))
+    if body.owner_handle:
+        owner_ref = EntityDAO.from_handle_to_ref(body.owner_handle)
+    else:
+        owner_ref = None
+    schema_in = EntityIntermediate(owner_ref=owner_ref, **body.model_dump())
+    entity = creation.create_one(schema_in, EntityDAO, creator)
+    return GeneratedFields(**entity.model_dump(by_alias=True))
 
 
 @router.get("", status_code=s.HTTP_200_OK)

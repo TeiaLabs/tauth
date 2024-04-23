@@ -6,10 +6,10 @@ from fastapi import status as s
 
 from ..injections import privileges
 from ..schemas import Creator
+from ..schemas.gen_fields import GeneratedFields
 from ..utils import validate_creation_access_level
 from . import controllers
 from .schemas import OrganizationIn
-from ..schemas.gen_fields import GeneratedFields
 
 service_name = Path(__file__).parent.name
 router = APIRouter(prefix=f"/{service_name}", tags=[service_name])

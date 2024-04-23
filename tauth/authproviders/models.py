@@ -19,7 +19,7 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
         default_factory=list
     )  # dynamic provider selection: issuer, audience
     extra: list[Attribute]  # url, client_id, client_secret
-    organizaion_ref: OrganizationRef
+    organization_ref: OrganizationRef
     service_ref: Optional[ServiceRef]
     type: Literal["auth0", "melt-key", "tauth-key"]
 

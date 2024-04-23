@@ -17,7 +17,7 @@ def create_one(client_name: str, creator: Creator, token_name: str) -> TokenCrea
         value=create_token(client_name, token_name),
     )
     try:
-        TokenDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).insert_one(
+        TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(
             token.bson()
         )
     except DuplicateKeyError as e:
@@ -33,7 +33,7 @@ def create_one(client_name: str, creator: Creator, token_name: str) -> TokenCrea
 
 def find_many(**kwargs) -> list[TokenMeta]:
     filters = {k: v for k, v in kwargs.items() if v is not None}
-    tokens = TokenDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).find(
+    tokens = TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find(
         filter=filters
     )
     tokens_view = [TokenMeta(**token) for token in tokens]
@@ -42,7 +42,7 @@ def find_many(**kwargs) -> list[TokenMeta]:
 
 def find_one(**kwargs) -> TokenMeta:
     filters = {k: v for k, v in kwargs.items() if v is not None}
-    token = TokenDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).find_one(
+    token = TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find_one(
         filter=filters
     )
     if token is None:

@@ -19,7 +19,7 @@ EmailStr = str
 @lru_cache(maxsize=32)
 def validate_token_against_db(token: str, client_name: str, token_name: str):
     filters = {"client_name": client_name, "name": token_name}
-    entity = TokenDAO.collection(Settings.get().TAUTH_MONGODB_DBNAME).find_one(
+    entity = TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find_one(
         filter=filters
     )
     if not entity:
@@ -29,7 +29,7 @@ def validate_token_against_db(token: str, client_name: str, token_name: str):
             "type": "DocumentNotFound",
         }
         raise HTTPException(status_code=s.HTTP_401_UNAUTHORIZED, detail=d)
-    if not secrets.compare_digest(token, entity.value):
+    if not secrets.compare_digest(token, entity["value"]):
         code, m = s.HTTP_401_UNAUTHORIZED, "Token does not match."
         raise HTTPException(status_code=code, detail={"msg": m})
     return entity
@@ -49,7 +49,9 @@ def create_user_on_db(creator: Creator, token_creator_email: Optional[EmailStr])
                 user_email=user_creator_email,
             ),
         )
-        UserDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(user.bson())
+        UserDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(
+            user.bson()
+        )
     except DuplicateKeyError:
         pass
 

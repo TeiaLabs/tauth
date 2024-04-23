@@ -1,14 +1,13 @@
 import secrets
 from typing import Optional
 
-from pydantic import EmailStr
 from fastapi import HTTPException, Request
 from fastapi import status as s
 from multiformats import multibase
-from pydantic import validate_email
+from pydantic import EmailStr, validate_email
+from redbaby.pyobjectid import PyObjectId
 
-from ..schemas import Creator
-from ..schemas import Infostar
+from ..schemas import Creator, Infostar
 from ..settings import Settings
 from ..utils.access_helper import sanitize_client_name
 from ..utils.creator_helper import create_user_on_db, validate_token_against_db
@@ -22,19 +21,41 @@ class RequestAuthenticator:
         user_email: str | None,
         api_key_header: str,
     ):
-        creator, token_creator_email = get_request_creator(token=api_key_header, user_email=user_email)
-        # infostar = get_request_infostar(creator, token_creator_email, request)
+        creator = get_request_creator(token=api_key_header, user_email=user_email)
+        infostar = get_request_infostar(creator, request)
+        print(infostar)
         if request.client is not None:
             creator.user_ip = request.client.host
         if request.headers.get("x-forwarded-for"):
             creator.user_ip = request.headers["x-forwarded-for"]
         request.state.creator = creator
+        request.state.infostar = infostar
 
 
-# def get_request_infostar(creator: Creator, token_creator_email: str, request: Request):
-#     infostar = Infostar(
-#     )
-#     return infostar
+def get_request_infostar(creator: Creator, request: Request):
+    breadcrumbs = creator.client_name.split("/")
+    owner_handle = f"/{breadcrumbs[1]}"
+    service_handle = "--".join(breadcrumbs[2:]) if len(breadcrumbs) > 2 else ""
+    infostar = Infostar(
+        request_id=PyObjectId(),
+        apikey_name=creator.token_name,
+        authprovider_type="melt-api-key",
+        authprovider_org="/teialabs",
+        # extra=InfostarExtra(
+        #     geolocation=request.headers.get("x-geo-location"),
+        #     jwt_sub=request.headers.get("x-jwt-sub"),
+        #     os=request.headers.get("x-os"),
+        #     url=request.headers.get("x-url"),
+        #     user_agent=request.headers.get("user-agent"),
+        # ),
+        extra={},
+        original=None,
+        service_handle=service_handle,
+        user_handle=creator.user_email,
+        user_owner_handle=owner_handle,
+        client_ip=creator.user_ip,
+    )
+    return infostar
 
 
 def parse_token(token_value: str) -> tuple[str, str, str]:
@@ -79,9 +100,9 @@ def get_request_creator(token: str, user_email: Optional[str]):
     else:
         token_obj = validate_token_against_db(token, client_name, token_name)
         if user_email is None:
-            request_creator_user_email = token_obj.created_by.user_email
+            request_creator_user_email = token_obj["created_by"]["user_email"]
         else:
-            token_creator_user_email = token_obj.created_by.user_email
+            token_creator_user_email = token_obj["created_by"]["user_email"]
             try:
                 validate_email(user_email)
             except:
@@ -94,4 +115,4 @@ def get_request_creator(token: str, user_email: Optional[str]):
         user_email=request_creator_user_email,
     )
     create_user_on_db(creator, token_creator_user_email)
-    return creator, token_obj.created_by.user_email
+    return creator

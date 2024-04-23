@@ -11,7 +11,9 @@ from .schemas import OrganizationIn
 def create_one(item: OrganizationIn, creator: Creator) -> OrganizationDAO:
     client = OrganizationDAO(**item.model_dump(), created_by=creator)
     try:
-        res = OrganizationDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(client.bson())
+        res = OrganizationDAO.collection(
+            alias=Settings.get().TAUTH_REDBABY_ALIAS
+        ).insert_one(client.bson())
     except pymongo_errors.DuplicateKeyError as e:
         d = {
             "error": e.__class__.__name__,
@@ -27,12 +29,14 @@ def read_many(creator: Creator, **filters) -> list:
     objs = OrganizationDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find(
         query
     )
-    return objs  
+    return objs
 
 
-@lfu_cache(maxsize=128)
+# @lfu_cache(maxsize=128)
 def read_one(external_id_key: str, external_id_value: str):
-    item = OrganizationDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find_one(
+    item = OrganizationDAO.collection(
+        alias=Settings.get().TAUTH_REDBABY_ALIAS
+    ).find_one(
         {
             "external_ids.name": external_id_key,
             "external_ids.value": external_id_value,

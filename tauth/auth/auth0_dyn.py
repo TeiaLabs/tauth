@@ -1,6 +1,7 @@
 from logging import getLogger
-from typing import Self
+from typing import Any, Self
 
+import jwt as pyjwt
 from authlib.jose import jwt
 from authlib.jose.errors import (
     ExpiredTokenError,
@@ -13,7 +14,6 @@ from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
 from cachetools.func import ttl_cache
 from fastapi import HTTPException, Request
 from httpx import Client, HTTPError
-from jose.jwt import get_unverified_claims
 from pydantic import BaseModel
 
 from ..authproviders.models import AuthProviderDAO
@@ -46,7 +46,7 @@ class ManyJSONKeyStore:
     def get_jwk(cls, domain: str) -> KeySet:
         log.debug("Fetching JWK.")
         with Client() as client:
-            res = client.get(f"https://{domain}/.well-known/jwks.json")
+            res = client.get(f"{domain}.well-known/jwks.json")
         try:
             res.raise_for_status()
         except HTTPError as e:
@@ -61,7 +61,7 @@ class RequestAuthenticator:
     @staticmethod
     def get_id_claims(domain: str) -> dict:
         id_claims_options = {
-            "iss": {"essential": True, "value": f"https://{domain}/"},
+            "iss": {"essential": True, "value": f"{domain}"},
             "exp": {"essential": True},
         }
         return id_claims_options
@@ -71,17 +71,21 @@ class RequestAuthenticator:
         access_claims_options = {
             "aud": {"essential": True, "value": audience},
             "exp": {"essential": True},
-            "iss": {"essential": True, "value": f"https://{domain}/"},
+            "iss": {"essential": True, "value": f"{domain}"},
         }
         return access_claims_options
 
     @staticmethod
-    def get_authprovider(token_value: str) -> list[AuthProviderDAO]:
-        jwt_header = get_unverified_claims(token_value)
+    def get_authprovider(token_value: str) -> AuthProviderDAO:
+        jwt_claims: dict[str, Any] = pyjwt.decode(
+            token_value, options={"verify_signature": False}
+        )
+        print(jwt_claims)
         filters = {"type": "auth0"}
-        if aud := jwt_header.get("aud"):
-            filters["external_ids.name"] = "audience"
-            filters["external_ids.value"] = aud
+        if aud := jwt_claims.get("aud"):
+            filters["external_ids"] = {
+                "$elemMatch": {"name": "audience", "value": aud[0]}
+            }
         providers = reading.read_many(creator={}, model=AuthProviderDAO, **filters)
         if not providers:
             raise HTTPException(
@@ -93,7 +97,7 @@ class RequestAuthenticator:
                     "filters": filters,
                 },
             )
-        return providers
+        return providers[0]
 
     @staticmethod
     def validate_access_token(
@@ -139,13 +143,22 @@ class RequestAuthenticator:
     def assemble_user_data(access_claims, id_claims) -> dict:
         required_access = ["org_id"]
         required_id = ["sub", "email"]
-        for required_claims, claims in zip([required_access, required_id], (access_claims, id_claims)):
+        for required_claims, claims in zip(
+            [required_access, required_id], (access_claims, id_claims)
+        ):
             for c in required_claims:
                 if c not in claims:
                     raise HTTPException(
                         401,
                         detail={
-                            "loc": ["headers", "X-ID-Token" if claims == id_claims else "Authorization"],
+                            "loc": [
+                                "headers",
+                                (
+                                    "X-ID-Token"
+                                    if claims == id_claims
+                                    else "Authorization"
+                                ),
+                            ],
                             "msg": f"Missing '{c}' claim.",
                             "type": "MissingRequiredClaim",
                         },
@@ -156,22 +169,28 @@ class RequestAuthenticator:
             "org_id": access_claims.get("org_id"),
         }
         return user_data
-    
+
     @staticmethod
     def assemble_creator(user_data: dict, authprovider: AuthProviderDAO) -> Creator:
-        if authprovider.service_ref is None:
-            raise HTTPException(
-                401,
-                detail={"msg": "Authprovider has no service reference.", "details": authprovider.model_dump()},
-            )
-        org = org_controllers.read_one({"$regex": r"/.*--auth0-org-id"}, user_data["org_id"])
+        # if authprovider.service_ref is None:
+        #     raise HTTPException(
+        #         401,
+        #         detail={
+        #             "msg": "Authprovider has no service reference.",
+        #             "details": authprovider.model_dump(),
+        #         },
+        #     )
+        # TODO: use iss to map to org-name
+        org = org_controllers.read_one(
+            {"$regex": r"/.*--auth0-org-id"}, user_data["org_id"]
+        )
         if not org:
             raise HTTPException(
                 401, detail=f"Organization with id '{user_data['org_id']}' not found."
             )
         c = Creator(
             client_name=org["name"]
-            + authprovider.service_ref.handle,
+            + "/happyservice",  # authprovider.service_ref.handle,
             token_name="auth0-jwt",
             user_email=user_data["user_email"],
         )
@@ -179,12 +198,7 @@ class RequestAuthenticator:
 
     @classmethod
     def validate(cls, request: Request, token_value: str, id_token: str):
-        auth0_providers = cls.get_authprovider(token_value)
-        if len(auth0_providers) >= 1:
-            print("Bad. Don't.")
-            return
-        else:
-            authprovider = auth0_providers[0]
+        authprovider = cls.get_authprovider(token_value)
         result = cls.validate_access_token(token_value, authprovider)
         if isinstance(result, JoseError):
             raise HTTPException(
@@ -211,6 +225,7 @@ class RequestAuthenticator:
             id_claims = result
         user_data = cls.assemble_user_data(access_claims, id_claims)
         request.state.creator = cls.assemble_creator(user_data, authprovider)
+        request.state.infostar = ""  # TODO
         # TODO: forward user IP using a header?
         if request.client is not None:
             request.state.creator.user_ip = request.client.host
