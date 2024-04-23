@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional, Self
+from typing import Self
 
 from authlib.jose import jwt
 from authlib.jose.errors import (
@@ -13,6 +13,7 @@ from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
 from cachetools.func import ttl_cache
 from fastapi import HTTPException, Request
 from httpx import Client, HTTPError
+from jose.jwt import get_unverified_claims
 from pydantic import BaseModel
 
 from ..authproviders.models import AuthProviderDAO
@@ -76,7 +77,7 @@ class RequestAuthenticator:
 
     @staticmethod
     def get_authprovider(token_value: str) -> list[AuthProviderDAO]:
-        jwt_header = get_unverified_claims(token_value)  # TODO
+        jwt_header = get_unverified_claims(token_value)
         filters = {"type": "auth0"}
         if aud := jwt_header.get("aud"):
             filters["external_ids.name"] = "audience"
