@@ -1,6 +1,6 @@
-from typing import Any, Self
+from typing import Any
 
-from authlib.jose.rfc7517.jwk import JsonWebKey
+from jwt import PyJWKSet
 from pytest_mock import MockerFixture
 
 from tauth.auth.auth0_dyn import RequestAuthenticator
@@ -31,18 +31,20 @@ class RequestMock:
     def __init__(self) -> None:
         self.state = StateMock()
         self.headers = {}
+        self.client = None
 
 
 def test_auth0_dyn(access_token: str, id_token: str, jwk: dict, mocker: MockerFixture):
     provider_target_fn = "tauth.auth.auth0_dyn.RequestAuthenticator.get_authprovider"
     mocker.patch(target=provider_target_fn, new=lambda *_, **__: AuthProviderMock)
 
-    jwk_target_fn = "tauth.auth.auth0_dyn.ManyJSONKeyStore.get_jwk"
-    mocker.patch(
-        target=jwk_target_fn, new=lambda *_, **__: JsonWebKey.import_key_set(jwk)
-    )
+    jwk_target_fn = "tauth.auth.auth0_dyn.ManyJSONKeySetStore.get_jwks"
+    mocker.patch(target=jwk_target_fn, new=lambda *_, **__: PyJWKSet.from_dict(jwk))
+
+    org_db_query_fn = "tauth.organizations.controllers.read_one"
+    mocker.patch(target=org_db_query_fn, new=lambda *_, **__: {"name": "test"})
 
     request = RequestMock()
 
-    RequestAuthenticator.validate(request, access_token, id_token)
+    RequestAuthenticator.validate(request, access_token, id_token)  # type: ignore
     assert True
