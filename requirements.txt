@@ -1,13 +1,12 @@
-authlib
 cachetools
 fastapi[all]
 http_error_schemas>=0.1.0
 httpx
 multiformats
 pydantic[dotenv,email]
+PyJWT
 pymongo
 python-dotenv
-python-jose
 python-multipart
 redbaby==1.0.2
 uvicorn

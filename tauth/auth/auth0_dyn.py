@@ -1,28 +1,39 @@
-from logging import getLogger
-from typing import Any, Self
+from typing import Any, Optional, Self
 
-from authlib.jose import jwt
-from authlib.jose.errors import (
-    ExpiredTokenError,
-    InvalidClaimError,
-    InvalidTokenError,
-    JoseError,
-    MissingClaimError,
-)
-from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
+import jwt as pyjwt
 from cachetools.func import ttl_cache
 from fastapi import HTTPException, Request
 from httpx import Client, HTTPError
+from jwt import (
+    InvalidSignatureError,
+    InvalidTokenError,
+    PyJWKClient,
+    PyJWKSet,
+    PyJWTError,
+)
+from loguru import logger
 from pydantic import BaseModel
-
-import jwt as pyjwt
 
 from ..authproviders.models import AuthProviderDAO
 from ..controllers import reading
 from ..organizations import controllers as org_controllers
 from ..schemas import Creator
 
-log = getLogger(__name__)
+
+def get_token_headers(token: str) -> dict[str, Any]:
+    header = pyjwt.get_unverified_header(token)
+    return header
+
+
+def get_token_unverified_claims(token: str) -> dict[str, Any]:
+    claims = pyjwt.decode(token, options={"verify_signature": False})
+    return claims
+
+
+def get_signing_key(kid: str, domain: str) -> Optional[str]:
+    jwk_set = ManyJSONKeySetStore.get_jwks(domain)
+    signing_key = PyJWKClient.match_kid(jwk_set.keys, kid)
+    return signing_key.key.public_key() if signing_key else None
 
 
 class Auth0Settings(BaseModel):
@@ -40,53 +51,35 @@ class Auth0Settings(BaseModel):
         return cls(domain=iss, audience=aud)
 
 
-class ManyJSONKeyStore:
-
+class ManyJSONKeySetStore:
     @classmethod
     @ttl_cache(maxsize=16, ttl=60 * 60 * 6)
-    def get_jwk(cls, domain: str) -> KeySet:
-        log.debug("Fetching JWK.")
+    def get_jwks(cls, domain: str) -> PyJWKSet:
+        logger.debug(f"Fetching JWKS from {domain}.")
         with Client() as client:
             res = client.get(f"{domain}.well-known/jwks.json")
         try:
             res.raise_for_status()
         except HTTPError as e:
-            log.error(f"Failed to fetch JWK from {domain}.")
+            logger.error(f"Failed to fetch JWKS from {domain}.")
             raise e
-        log.info(f"JWK fetched from {domain}.")
-        return JsonWebKey.import_key_set(res.json())
+        logger.debug(f"JWK fetched from {domain}.")
+
+        return PyJWKSet.from_dict(res.json())
 
 
 class RequestAuthenticator:
-
-    @staticmethod
-    def get_id_claims(domain: str) -> dict:
-        id_claims_options = {
-            "iss": {"essential": True, "value": f"{domain}"},
-            "exp": {"essential": True},
-        }
-        return id_claims_options
-
-    @staticmethod
-    def get_access_claims(domain: str, audience: str) -> dict:
-        access_claims_options = {
-            "aud": {"essential": True, "value": audience},
-            "exp": {"essential": True},
-            "iss": {"essential": True, "value": f"{domain}"},
-        }
-        return access_claims_options
-
     @staticmethod
     def get_authprovider(token_value: str) -> AuthProviderDAO:
-        jwt_claims: dict[str, Any] = pyjwt.decode(
-            token_value, options={"verify_signature": False}
-        )
-        print(jwt_claims)
-        filters = {"type": "auth0"}
-        if aud := jwt_claims.get("aud"):
+        token_claims = get_token_unverified_claims(token_value)
+        filters: dict[str, Any] = {"type": "auth0"}
+        if aud := token_claims.get("aud"):
+            # We assume that the actual audience is the first element in the list.
+            # The second element is the issuer's "userinfo" endpoint.
             filters["external_ids"] = {
                 "$elemMatch": {"name": "audience", "value": aud[0]}
             }
+
         providers = reading.read_many(creator={}, model=AuthProviderDAO, **filters)
         if not providers:
             raise HTTPException(
@@ -102,42 +95,60 @@ class RequestAuthenticator:
 
     @staticmethod
     def validate_access_token(
-        token_value: str, authprovider: AuthProviderDAO
-    ) -> dict | JoseError:
+        token_value: str,
+        token_headers: dict[str, Any],
+        authprovider: AuthProviderDAO,
+    ) -> dict | PyJWTError:
         sets = Auth0Settings.from_authprovider(authprovider)
-        j_w_k = ManyJSONKeyStore.get_jwk(sets.domain)
+        kid = token_headers.get("kid")
+        if kid is None:
+            raise InvalidTokenError("Missing 'kid' header.")
+
+        signing_key = get_signing_key(kid, sets.domain)
+        if signing_key is None:
+            raise InvalidSignatureError("No signing key found.")
+
         try:
-            access_claims = jwt.decode(
+            access_claims = pyjwt.decode(
                 token_value,
-                j_w_k,
-                claims_options=RequestAuthenticator.get_access_claims(
-                    sets.domain, sets.audience
-                ),
+                signing_key,
+                algorithms=[token_headers.get("alg", "RS256")],
+                issuer=sets.domain,
+                audience=sets.audience,
+                options={"require": ["exp", "iss", "aud"]},
             )
-            access_claims.validate()
-        except (
-            ExpiredTokenError,
-            InvalidClaimError,
-            InvalidTokenError,
-            MissingClaimError,
-        ) as e:
+        except PyJWTError as e:
             # TODO log e.error, e.description, e.uri
             # short-string error code
             # long-string to describe this error
             # web page that describes this error
+            logger.error(f"Failed to validate access token:\n{e}")
             return e
         return access_claims
 
     @staticmethod
-    def validate_id_token(token_value: str, authprovider: AuthProviderDAO) -> dict:
+    def validate_id_token(
+        token_value: str,
+        token_headers: dict[str, Any],
+        authprovider: AuthProviderDAO,
+    ) -> dict:
         sets = Auth0Settings.from_authprovider(authprovider)
-        j_w_k = ManyJSONKeyStore.get_jwk(sets.domain)
-        id_claims = jwt.decode(
+        kid = token_headers.get("kid")
+        if kid is None:
+            raise InvalidTokenError("Missing 'kid' header.")
+
+        signing_key = get_signing_key(kid, sets.domain)
+        if signing_key is None:
+            raise InvalidSignatureError("No signing key found.")
+
+        id_claims = pyjwt.decode(
             token_value,
-            j_w_k,
-            claims_options=RequestAuthenticator.get_id_claims(sets.domain),
+            signing_key,
+            algorithms=[token_headers.get("alg", "RS256")],
+            issuer=sets.domain,
+            audience=sets.audience,
+            options={"require": ["iss", "exp"]},
         )
-        id_claims.validate()
         return id_claims
 
     @staticmethod
@@ -164,6 +175,7 @@ class RequestAuthenticator:
                             "type": "MissingRequiredClaim",
                         },
                     )
+
         user_data = {
             "user_id": id_claims.get("sub"),
             "user_email": id_claims.get("email"),
@@ -189,6 +201,7 @@ class RequestAuthenticator:
             raise HTTPException(
                 401, detail=f"Organization with id '{user_data['org_id']}' not found."
             )
+
         c = Creator(
             client_name=org["name"]
             + "/happyservice",  # authprovider.service_ref.handle,
@@ -199,31 +212,35 @@ class RequestAuthenticator:
 
     @classmethod
     def validate(cls, request: Request, token_value: str, id_token: str):
+        header = get_token_headers(token_value)
+
         authprovider = cls.get_authprovider(token_value)
-        result = cls.validate_access_token(token_value, authprovider)
-        if isinstance(result, JoseError):
+        result = cls.validate_access_token(token_value, header, authprovider)
+        if isinstance(result, PyJWTError):
             raise HTTPException(
                 401,
                 detail={
                     "loc": ["headers", "Authorization"],
-                    "msg": result.description,
-                    "type": result.error,
+                    "msg": str(result),
+                    "type": str(type(result)),
                 },
             )
         else:
             access_claims = result
-        result = cls.validate_id_token(id_token, authprovider)
-        if isinstance(result, JoseError):
+
+        result = cls.validate_id_token(id_token, header, authprovider)
+        if isinstance(result, PyJWTError):
             raise HTTPException(
                 401,
                 detail={
                     "loc": ["headers", "X-ID-Token"],
-                    "msg": result.description,
-                    "type": result.error,
+                    "msg": str(result),
+                    "type": str(type(result)),
                 },
             )
         else:
             id_claims = result
+
         user_data = cls.assemble_user_data(access_claims, id_claims)
         request.state.creator = cls.assemble_creator(user_data, authprovider)
         request.state.infostar = ""  # TODO
@@ -232,4 +249,3 @@ class RequestAuthenticator:
             request.state.creator.user_ip = request.client.host
         if request.headers.get("x-forwarded-for"):
             request.state.creator.user_ip = request.headers["x-forwarded-for"]
-        return
