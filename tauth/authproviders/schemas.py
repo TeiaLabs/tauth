@@ -1,6 +1,6 @@
-from typing import Literal, Optional
+from typing import Any, Literal, Optional, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationInfo, model_validator
 from pydantic.config import ConfigDict
 from redbaby.pyobjectid import PyObjectId
 
@@ -14,6 +14,17 @@ class AuthProviderIn(BaseModel):
     organization_name: str
     service_name: Optional[str] = Field(None)
     type: Literal["auth0", "melt-key", "tauth-key"]
+
+    @model_validator(mode="after")
+    def check_external_ids(self: Self) -> Self:
+        if self.type == "auth0":
+            for field in self.external_ids:
+                if field.name == "issuer":
+                    if not field.value.startswith("https://"):
+                        raise ValueError("Issuer must be an HTTPS URL.")
+                    if not field.value.endswith("/"):
+                        field.value += "/"
+        return self
 
     model_config = ConfigDict(
         json_schema_extra={

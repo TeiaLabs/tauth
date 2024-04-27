@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
 from redbaby.behaviors.reading import ReadingMixin
@@ -33,11 +33,15 @@ class UserRef(EntityRefBase):
 
 
 class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
-    external_ids: list[Attribute]  # e.g., url, azuread-id/auth0-id, ...
-    extra: list[Attribute]
+    external_ids: list[Attribute] = Field(
+        default_factory=list
+    )  # e.g., url, azuread-id/auth0-id, ...
+    extra: list[Attribute] = Field(default_factory=list)
     handle: str
     owner_ref: Optional[EntityRef]
-    roles: list[str]  # e.g.: ["teia-admin", "allai-user-basic"]
+    roles: list[str] = Field(
+        default_factory=list
+    )  # e.g.: ["teia-admin", "allai-user-basic"]
     type: Literal["user", "service", "organization"]
 
     @classmethod
