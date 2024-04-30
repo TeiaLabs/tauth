@@ -4,11 +4,16 @@
 
 ```py
 class EntityDAO(BaseModel):
-    external_ids: list[Attribute]
-    extra: list[Attribute]
-    handle: str
-    owner: Optional[EntityRef]
-    roles: list[str]
+    created_at: datetime
+    created_by: InfoStar
+    updated_at: datetime
+    updated_by: InfoStar
+
+    external_ids: list[Attribute]  # e.g., url, azuread-id/auth0-id, ...
+    extra: list[Attribute]  # birthday
+    handle: str  # nei@teialabs.com, athena--api, /loreal
+    owner_ref: Optional[EntityRef]
+    roles: list[str]  # ["teia-admin", "allai-user-basic"]
     type: Literal["user", "service", "organization"]
 ```
 
@@ -105,4 +110,16 @@ Rules:
     ],
     "type": "service",
 }
+```
+
+## entity data
+
+```py
+class EntityData(Subtypeable):
+    _id: Hash(handle, name, value)
+    handle: str
+    name: str  # ClientData | CompanyData
+    value: any # {ip, user-agent} | {position-name, department-name}
+    created_at: datetime
+    last_seen_at: datetime
 ```

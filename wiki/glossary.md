@@ -17,3 +17,4 @@
     - Issuer: `iss` claim, e.g.: `osf.eu.auth0`.
     - Audience: `aud` claim, e.g.: `athena`.
     - Subject: `sub` claim, e.g.: `aaad|12345`.
+    - Authorized Providers: `azp` claim, e.g.: `client-id`.

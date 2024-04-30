@@ -29,11 +29,6 @@ def create_token(client_name: str, token_name: str) -> str:
 
 e.g.: `MELT_/myorg/myapp/ui--my.prod.token--z.................................`
 
-### Azure AD
-
-1. register an authprovider with the audience and tenant values
-2. map to which app it belongs
-
 ### Auth0
 
 1. register an authprovider with the audience and domain values
