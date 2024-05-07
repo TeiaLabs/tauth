@@ -57,7 +57,6 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
             ),
             IndexModel(
                 [("type", 1), ("external_ids.name", 1), ("external_ids.value", 1)],
-                unique=True,
             ),
         ]
         return idxs
