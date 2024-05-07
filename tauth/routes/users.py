@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, Path, Request
+from loguru import logger
 
-from ..controllers import users as user_controller
+from ..auth.melt_key.schemas import UserOut
+from ..controllers import reading
+from ..entities.models import EntityDAO
 from ..injections import privileges
-from ..schemas import Creator, UserOut
+from ..schemas import Creator
 
 router = APIRouter(prefix="/clients", tags=["legacy"])
 
@@ -14,5 +17,15 @@ async def read_many(
     creator: Creator = Depends(privileges.is_valid_user),
 ) -> list[UserOut]:
     """Read all users from a client."""
-    users = user_controller.read_many(client_name=name)
+    logger.info(f"Reading all users from client {name!r}.")
+    filters = {"type": "user", "owner_ref.handle": name}
+    items = reading.read_many(creator={}, model=EntityDAO, **filters)
+    users = [
+        UserOut(
+            created_at=i.created_at,
+            created_by=i.created_by,
+            email=i.handle,
+        )
+        for i in items
+    ]
     return users

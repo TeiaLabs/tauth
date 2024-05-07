@@ -2,12 +2,23 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
+from ...schemas.creator import Creator
 
-class Creator(BaseModel):
+
+class TokenMeta(BaseModel):
+    created_at: datetime
+    created_by: Creator
+    name: str
+
+
+class TokenCreationIntermediate(BaseModel):
     client_name: str
-    token_name: str
-    user_email: EmailStr
-    user_ip: str = "127.0.0.1"
+    name: str
+    value: str
+
+
+class TokenCreationOut(TokenMeta):
+    value: str
 
 
 class UserCreation(BaseModel):
@@ -18,19 +29,6 @@ class UserOut(BaseModel):
     created_at: datetime
     created_by: Creator
     email: EmailStr
-
-
-class TokenCreationOut(BaseModel):
-    created_by: Creator
-    created_at: datetime
-    name: str
-    value: str
-
-
-class TokenMeta(BaseModel):
-    created_at: datetime
-    created_by: Creator
-    name: str
 
 
 class ClientCreation(BaseModel):
@@ -60,7 +58,3 @@ class ClientOutJoinTokensAndUsers(BaseModel):
     name: str
     tokens: list[TokenMeta]
     users: list[UserOut]
-
-
-class TokenCreation(BaseModel):
-    name: str

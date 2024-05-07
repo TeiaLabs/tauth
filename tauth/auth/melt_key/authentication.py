@@ -3,15 +3,21 @@ from typing import Optional
 
 from fastapi import HTTPException, Request
 from fastapi import status as s
-from multiformats import multibase
-from pydantic import EmailStr, validate_email
+from loguru import logger
+from pydantic import validate_email
+from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
-from ..schemas import Creator, Infostar
-from ..settings import Settings
-from ..utils.access_helper import sanitize_client_name
-from ..utils.creator_helper import create_user_on_db, validate_token_against_db
-from ..utils.token_helper import parse_token
+from ...authproviders.models import AuthProviderDAO
+from ...controllers import creation, reading
+from ...entities.models import EntityDAO, EntityRef
+from ...entities.schemas import EntityIntermediate
+from ...models.client import UserDAO
+from ...schemas import Creator, Infostar
+from ...settings import Settings
+from .token import parse_token, sanitize_client_name, validate_token_against_db
+
+EmailStr = str
 
 
 class RequestAuthenticator:
@@ -23,7 +29,6 @@ class RequestAuthenticator:
     ):
         creator = get_request_creator(token=api_key_header, user_email=user_email)
         infostar = get_request_infostar(creator, request)
-        print(infostar)
         if request.client is not None:
             creator.user_ip = request.client.host
         if request.headers.get("x-forwarded-for"):
@@ -33,6 +38,7 @@ class RequestAuthenticator:
 
 
 def get_request_infostar(creator: Creator, request: Request):
+    logger.debug("Assembling Infostar based on Creator.")
     breadcrumbs = creator.client_name.split("/")
     owner_handle = f"/{breadcrumbs[1]}"
     service_handle = "--".join(breadcrumbs[2:]) if len(breadcrumbs) > 2 else ""
@@ -58,33 +64,14 @@ def get_request_infostar(creator: Creator, request: Request):
     return infostar
 
 
-def parse_token(token_value: str) -> tuple[str, str, str]:
-    """
-    Parse token string into client name, token name, and token value.
-
-    Raise an error if token is incorrectly formatted.
-    >>> parse_token("MELT_/client-name--token-name--abcdef123456789")
-    ('client-name', 'token-name', 'abcdef123456789')
-    """
-    stripped = token_value.lstrip("MELT_")
-    pieces = stripped.split("--")
-    if len(pieces) != 3:
-        code, m = 401, "Token is not in the correct format."
-        raise HTTPException(status_code=code, detail=m)
-    return tuple(pieces)  # type: ignore
-
-
-def create_token(client_name: str, token_name: str):
-    token_value = multibase.encode(secrets.token_bytes(24), "base58btc")
-    fmt_token_value = f"MELT_{client_name}--{token_name}--{token_value}"
-    return fmt_token_value
-
-
 def get_request_creator(token: str, user_email: Optional[str]):
+    logger.debug("Parsing token.")
     client_name, token_name, _ = parse_token(token)
     client_name = sanitize_client_name(client_name)
+    logger.debug(f"client_name: {client_name!r}, token_name: {token_name!r}")
     token_creator_user_email = None
     if client_name == "/":
+        logger.debug("Using root token, checking email.")
         if user_email is None:
             code, m = s.HTTP_401_UNAUTHORIZED, "User email is required for root client."
             raise HTTPException(status_code=code, detail=m)
@@ -98,6 +85,7 @@ def get_request_creator(token: str, user_email: Optional[str]):
             raise HTTPException(status_code=code, detail=m)
         request_creator_user_email = user_email
     else:
+        logger.debug("Using non-root token, validating token in DB.")
         token_obj = validate_token_against_db(token, client_name, token_name)
         if user_email is None:
             request_creator_user_email = token_obj["created_by"]["user_email"]
@@ -114,5 +102,43 @@ def get_request_creator(token: str, user_email: Optional[str]):
         token_name=token_name,
         user_email=request_creator_user_email,
     )
-    create_user_on_db(creator, token_creator_user_email)
+    # TODO: create user entity in DB instead
+    # create_user_on_db(creator, token_creator_user_email)
     return creator
+
+
+def create_user_on_db(creator: Creator, token_creator_email: Optional[EmailStr]):
+    user_creator_email = (
+        creator.user_email if token_creator_email is None else token_creator_email
+    )
+    try:
+        # authprovider_filters = {
+        #     "type": "melt-key",
+        #     "organization_ref.handle": {"$regex": f"^{creator.client_name}"},
+        # }
+        # authprovider = reading.read_one_filters(
+        #     creator={}, model=AuthProviderDAO, **authprovider_filters
+        # )
+        organization = f"/{creator.client_name.split("/")[1]}"
+        filters_org = {"type": "organization", "handle": organization}
+        org_entity = reading.read_one_filters(creator={}, model=EntityDAO, **filters_org)
+        org_ref = EntityRef(**org_entity.model_dump())
+        user_i = EntityIntermediate(
+            handle=creator.user_email,
+            # owner_ref=authprovider.organization_ref.model_dump(),  # type: ignore
+            owner_ref=org_ref,
+            type="user",
+        )
+        user = creation.create_one(
+            user_i,
+            EntityDAO,
+            creator={
+                "client_name": creator.user_email,
+                "token_name": creator.client_name,
+                "user_email": user_creator_email,
+                # "user_ip": "system",
+            },  # type: ignore
+        )
+        logger.debug(f"Registered user {user_creator_email!r} after using authprovider 'melt-key'.")
+    except DuplicateKeyError:
+        pass

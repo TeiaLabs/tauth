@@ -1,30 +1,55 @@
 import re
+import secrets
+from functools import lru_cache
 
 from fastapi import HTTPException
 from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
+from multiformats import multibase
+
+from ...settings import Settings
+from ..melt_key.models import TokenDAO
 
 
-def validate_creation_access_level(client_name: str, creator_client_name: str):
+def parse_token(token_value: str) -> tuple[str, str, str]:
     """
-    Validate if `client_name` is a direct child of `creator_client_name`.
+    Parse token string into client name, token name, and token value.
 
-    >>> validate_creation_access_level("/teia/athena/", "/teia")
-    None
-    >>> validate_creation_access_level("/teia", "/")
-    None
-    >>> validate_creation_access_level("/teia", "/osf")
-    fastapi.exceptions.HTTPException: 403 Forbidden
-    >>> validate_creation_access_level("/teia/athena", "/")
-    fastapi.exceptions.HTTPException: 403 Forbidden
+    Raise an error if token is incorrectly formatted.
+    >>> parse_token("MELT_/client-name--token-name--abcdef123456789")
+    ('client-name', 'token-name', 'abcdef123456789')
     """
-    clean_client_name = sanitize_client_name(client_name)
-    parent_name = clean_client_name.rsplit("/", 1)[0]
-    if parent_name == "":
-        parent_name = "/"
-    if parent_name != creator_client_name:
-        m = f"Client {creator_client_name!r} cannot create client {client_name!r}."
-        raise HTTPException(status_code=s.HTTP_403_FORBIDDEN, detail=m)
+    stripped = token_value.lstrip("MELT_")
+    pieces = stripped.split("--")
+    if len(pieces) != 3:
+        code, m = 401, "Token is not in the correct format."
+        raise HTTPException(status_code=code, detail=m)
+    return tuple(pieces)  # type: ignore
+
+
+def create_token(client_name: str, token_name: str):
+    token_value = multibase.encode(secrets.token_bytes(24), "base58btc")
+    fmt_token_value = f"MELT_{client_name}--{token_name}--{token_value}"
+    return fmt_token_value
+
+
+@lru_cache(maxsize=32)
+def validate_token_against_db(token: str, client_name: str, token_name: str):
+    filters = {"client_name": client_name, "name": token_name}
+    entity = TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).find_one(
+        filter=filters
+    )
+    if not entity:
+        d = {
+            "filters": filters,
+            "msg": f"Token does not exist for client.",
+            "type": "DocumentNotFound",
+        }
+        raise HTTPException(status_code=s.HTTP_401_UNAUTHORIZED, detail=d)
+    if not secrets.compare_digest(token, entity["value"]):
+        code, m = s.HTTP_401_UNAUTHORIZED, "Token does not match."
+        raise HTTPException(status_code=code, detail={"msg": m})
+    return entity
 
 
 def sanitize_client_name(client_name: str, loc: list[str] = ["body", "name"]) -> str:
