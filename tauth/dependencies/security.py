@@ -1,14 +1,12 @@
-from logging import getLogger
 from typing import Iterable
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
+from loguru import logger
 
-from ..auth import auth0_dyn, melt_api_key
-from ..settings import Settings
-
-log = getLogger("tauth")
+from ..auth import auth0_dyn
+from ..auth.melt_key import authentication as melt_key
 
 
 def init_app(app: FastAPI):
@@ -51,12 +49,13 @@ class RequestAuthenticator:
             )
 
         if token_value.startswith("MELT_"):
-            log.debug("Authenticating with a TEIA API key.")
-            melt_api_key.RequestAuthenticator.validate(request, user_email, token_value)
+            logger.debug("Authenticating with a MELT API key (legacy).")
+            melt_key.RequestAuthenticator.validate(request, user_email, token_value)
             return
         if id_token is None:
             raise HTTPException(401, detail={"msg": "Missing ID token."})
         else:
+            logger.debug("Authenticating with an Auth0 provider.")
             # figure out which provider/iss it's from
             auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
             return
