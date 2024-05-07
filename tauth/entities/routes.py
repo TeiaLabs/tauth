@@ -4,11 +4,11 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi import status as s
 
+from ..auth.melt_key.token import validate_token_against_db
 from ..controllers import creation, reading
 from ..injections import privileges
 from ..schemas import Creator
 from ..schemas.gen_fields import GeneratedFields
-from ..utils import validate_creation_access_level
 from .models import EntityDAO
 from .schemas import EntityIn, EntityIntermediate
 
@@ -20,7 +20,9 @@ router = APIRouter(prefix=f"/{service_name}", tags=[service_name])
 @router.post("/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def create_one(
     request: Request,
-    body: EntityIn = Body(),
+    body: EntityIn = Body(
+        openapi_examples=EntityIn.model_config["json_schema_extra"]["examples"][0]
+    ),
     creator: Creator = Depends(privileges.is_valid_admin),
 ):
     # validate_creation_access_level(org_in.name, creator.client_name)  # TODO implement this

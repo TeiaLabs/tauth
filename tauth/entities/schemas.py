@@ -19,15 +19,24 @@ class EntityIn(BaseModel):
         json_schema_extra={
             "examples": [
                 {
-                    "Org": {
-                        "summary": "Minimal Organization Example",
-                        "description": "A **normal** item works correctly.",
+                    "org": {
+                        "summary": "Minimal Organization",
+                        "description": "A root-level organization with no authproviders registered.",
                         "value": {
-                            "handle": "/teialabs",
+                            "handle": "/orgname",
                             "owner_handle": None,
                             "type": "organization",
                         },
-                    }
+                    },
+                    "org-user": {
+                        "summary": "Minimal Organization User",
+                        "description": 'A user registered in an organization. "owner_handle" must point to a valid organization handle.',
+                        "value": {
+                            "handle": "user@orgname.com",
+                            "owner_handle": "/orgname",
+                            "type": "user",
+                        },
+                    },
                 }
             ]
         }
