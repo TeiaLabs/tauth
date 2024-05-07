@@ -1,4 +1,5 @@
 cachetools
+cryptography
 fastapi[all]
 http_error_schemas>=0.1.0
 httpx

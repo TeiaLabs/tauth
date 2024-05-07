@@ -18,11 +18,6 @@ class Settings(BaseSettings):
     TAUTH_MONGODB_URI: str = "mongodb://localhost:27017/"
     TAUTH_REDBABY_ALIAS: str = "tauth"
 
-    # Auth providers
-    ENABLE_AUTH0: bool = False
-    ENABLE_AUTH2: bool = False
-    ENABLE_AZURE: bool = False
-
     model_config = SettingsConfigDict(extra="ignore", env_file=".env")
 
     @classmethod
