@@ -1,4 +1,4 @@
-from typing import TypeVar, Type
+from typing import Type, TypeVar
 
 from fastapi import HTTPException
 from pydantic import BaseModel
@@ -10,7 +10,6 @@ from ..utils.teia_behaviors import Authoring
 
 T = TypeVar("T", bound=Authoring)
 
-# TODO: from ..utils import validate_creation_access_level
 
 def create_one(item_in: BaseModel, model: Type[T], creator: Creator) -> T:
     item = model(**item_in.model_dump(), created_by=creator)

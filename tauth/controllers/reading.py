@@ -10,7 +10,7 @@ from ..settings import Settings
 T = TypeVar("T", bound=ReadingMixin)
 
 
-def read_many(creator: Creator, model: Type[T], **filters) -> list:
+def read_many(creator, model: Type[T], **filters) -> list:
     query = {k: v for k, v in filters.items() if v is not None}
     objs = model.find(
         filter=query,
