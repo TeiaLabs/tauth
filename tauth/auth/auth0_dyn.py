@@ -11,7 +11,6 @@ from jwt import (
     MissingRequiredClaimError,
     PyJWKClient,
     PyJWKSet,
-    PyJWTError,
 )
 from loguru import logger
 from pydantic import BaseModel
@@ -69,7 +68,6 @@ class ManyJSONKeySetStore:
         except HTTPError as e:
             logger.error(f"Failed to fetch JWKS from {domain}.")
             raise e
-        logger.debug(f"JWK fetched from {domain}.")
 
         return PyJWKSet.from_dict(res.json())
 
@@ -106,12 +104,6 @@ class RequestAuthenticator:
         if signing_key is None:
             raise InvalidSignatureError("No signing key found.")
 
-            HTTPException,
-            MissingRequiredClaimError,
-            InvalidTokenError,
-            InvalidSignatureError,
-            ValueError,
-            HTTPError,
         access_claims = pyjwt.decode(
             token_value,
             signing_key,
@@ -149,6 +141,7 @@ class RequestAuthenticator:
 
     @staticmethod
     def assemble_user_data(access_claims, id_claims) -> dict:
+        logger.debug("Assembling user data.")
         required_access = ["org_id"]
         required_id = ["sub", "email"]
         for required_claims, claims in zip(
@@ -167,6 +160,7 @@ class RequestAuthenticator:
 
     @staticmethod
     def assemble_creator(infostar: Infostar) -> Creator:
+        logger.debug("Assembling Creator based on Infostar.")
         c = Creator(
             client_name=f"{infostar.user_owner_handle}/{infostar.service_handle}",
             token_name=infostar.apikey_name,
@@ -179,6 +173,7 @@ class RequestAuthenticator:
     def assemble_infostar(
         request: Request, user_data: dict, authprovider: AuthProviderDAO
     ) -> Infostar:
+        logger.debug("Assembling Infostar.")
         try:
             user = reading.read_one_filters(
                 creator={},
