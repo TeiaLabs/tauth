@@ -30,17 +30,31 @@ class AuthProviderIn(BaseModel):
         json_schema_extra={
             "examples": [
                 {
+                    "melt-api-key": {
+                        "summary": "MELT API Key (Teia Labs)",
+                        "description": "MELT API Keys of the form `MELT_<organization>/[service]--<key_name>--<key_id>`.",
+                        "value": {
+                            "organization_name": "/teialabs",
+                            # "service_name": "",
+                            "type": "melt-key",
+                        },
+                    },
                     "auth0": {
-                        "summary": "An Auth0 Example",
-                        "description": "A **normal** item works correctly.",
+                        "summary": "Auth0 (Teia Labs)",
+                        "description": "Teia Labs' Auth0 as an authprovider.",
                         "value": {
                             "external_ids": [
-                                {"name": "issuer", "value": "https://example.com"},
-                                {"name": "audience", "value": "example"},
+                                {
+                                    "name": "issuer",
+                                    "value": "https://dev-z60iog20x0slfn0a.us.auth0.com/",
+                                },
+                                {
+                                    "name": "audience",
+                                    "value": "api://allai.chat.webui",
+                                },
                             ],
-                            "extra": [],
-                            "organization_name": "org1",
-                            "service_name": "service1",
+                            "organization_name": "/teialabs",
+                            "service_name": "athena-api",
                             "type": "auth0",
                         },
                     },
