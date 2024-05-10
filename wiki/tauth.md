@@ -25,13 +25,13 @@ CLI user:
 
 ```py
 class AuthProvider(BaseModel):
-    app_name: Optional[str] = None # /allai/chat/slack
+    service_handle: Optional[str] = None # /allai/chat/slack
     created_at: datetime
     created_by: InfoStar
     extra: list[Attribute]  # dynamic provider selection
     id: str = Field(alias="_id")
     org_name: str  # /osf
-    type: Literal["auth0", "tauth-key", ...]
+    type: Literal["auth0", "melt-key", "tauth-key", ...]
     updated_at: datetime
     updated_by: InfoStar
 ```

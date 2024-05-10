@@ -11,7 +11,7 @@ class EntityDAO(BaseModel):
 
     external_ids: list[Attribute]  # e.g., url, azuread-id/auth0-id, ...
     extra: list[Attribute]  # birthday
-    handle: str  # nei@teialabs.com, athena--api, /loreal
+    handle: str  # nei@teialabs.com, athena--api, /osf/innovation
     owner_ref: Optional[EntityRef]
     roles: list[str]  # ["teia-admin", "allai-user-basic"]
     type: Literal["user", "service", "organization"]
@@ -33,8 +33,8 @@ Rules:
 ```json
 {
     "_id": "1",
-    "handle": "teialabs",
-    "owner": null,
+    "handle": "/teialabs",
+    "owner_ref": null,
     "extra": [
         {
             "key": "name",
