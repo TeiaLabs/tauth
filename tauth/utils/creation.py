@@ -6,7 +6,7 @@ from pymongo import errors as pymongo_errors
 
 from ..schemas import Creator
 from ..settings import Settings
-from ..utils.teia_behaviors import Authoring
+from .teia_behaviors import Authoring
 
 T = TypeVar("T", bound=Authoring)
 

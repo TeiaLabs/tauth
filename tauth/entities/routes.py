@@ -5,10 +5,10 @@ from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi import status as s
 
 from ..auth.melt_key.token import validate_token_against_db
-from ..controllers import creation, reading
 from ..injections import privileges
 from ..schemas import Creator
 from ..schemas.gen_fields import GeneratedFields
+from ..utils import creation, reading
 from .models import EntityDAO
 from .schemas import EntityIn, EntityIntermediate
 

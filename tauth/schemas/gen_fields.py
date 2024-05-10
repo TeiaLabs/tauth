@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from redbaby.pyobjectid import PyObjectId
 
-from ..schemas import Creator
+from .creator import Creator
 
 
 class GeneratedFields(BaseModel):

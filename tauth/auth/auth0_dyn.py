@@ -17,10 +17,10 @@ from pydantic import BaseModel
 from redbaby.pyobjectid import PyObjectId
 
 from ..authproviders.models import AuthProviderDAO
-from ..controllers import creation, reading
 from ..entities.models import EntityDAO
 from ..entities.schemas import EntityIntermediate
 from ..schemas import Creator, Infostar
+from ..utils import creation, reading
 
 
 def get_token_headers(token: str) -> dict[str, Any]:

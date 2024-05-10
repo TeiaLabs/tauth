@@ -1,7 +1,6 @@
 from redbaby.database import DB
 from redbaby.document import Document
 
-from ..models import all_models
 from ..settings import Settings
 
 

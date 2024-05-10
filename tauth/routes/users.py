@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, Path, Request
 from loguru import logger
 
 from ..auth.melt_key.schemas import UserOut
-from ..controllers import reading
 from ..entities.models import EntityDAO
 from ..injections import privileges
 from ..schemas import Creator
+from ..utils import reading
 
 router = APIRouter(prefix="/clients", tags=["legacy"])
 

@@ -22,10 +22,10 @@ from ..auth.melt_key.schemas import (
 )
 from ..auth.melt_key.token import create_token
 from ..authproviders.models import AuthProviderDAO
-from ..controllers import creation, reading
 from ..entities.models import EntityDAO
 from ..injections import privileges
 from ..schemas import Creator
+from ..utils import creation, reading
 
 router = APIRouter(prefix="/clients", tags=["legacy"])
 

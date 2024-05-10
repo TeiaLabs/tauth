@@ -5,11 +5,11 @@ from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi import status as s
 
 from ..auth.melt_key.authorization import validate_creation_access_level
-from ..controllers import creation, reading
 from ..entities.models import EntityDAO
 from ..injections import privileges
 from ..schemas import Creator
 from ..schemas.gen_fields import GeneratedFields
+from ..utils import creation, reading
 from .models import AuthProviderDAO
 from .schemas import AuthProviderIn, AuthProviderMoreIn
 

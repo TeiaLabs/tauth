@@ -9,12 +9,11 @@ from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
-from ...controllers import creation, reading
 from ...entities.models import EntityDAO, EntityRef
 from ...entities.schemas import EntityIntermediate
-from ...models.client import UserDAO
 from ...schemas import Creator, Infostar
 from ...settings import Settings
+from ...utils import creation, reading
 from .token import parse_token, sanitize_client_name, validate_token_against_db
 
 EmailStr = str
