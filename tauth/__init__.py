@@ -1,1 +1,1 @@
-from .routes import get_router
+from .app import get_router
