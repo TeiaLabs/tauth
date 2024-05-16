@@ -10,6 +10,7 @@ from ..auth.melt_key.token import create_token
 from ..authproviders.models import AuthProviderDAO
 from ..entities.models import EntityDAO
 from ..schemas.creator import Creator
+from ..settings import Settings
 from ..utils import creation, reading
 
 router = APIRouter(prefix="/clients", tags=["legacy"])
@@ -29,8 +30,9 @@ async def create_one(
     logger.debug(f"Attempting to CREATE token {name!r} for {client_name!r}.")
     creator: Creator = request.state.creator
     try:
-        organization = f"/{client_name.split("/")[1]}"
-        logger.debug(f"Checking if organization entity with handle {organization!r} exists.")
+        org_handle = client_name.split("/")[1]
+        organization = f"/{org_handle}"
+        logger.debug(f"Checking if organization entity {organization!r} exists.")
         filters = {"handle": organization, "type": "organization"}
         org = reading.read_one_filters(creator={}, model=EntityDAO, **filters)
     except HTTPException as e:
@@ -42,30 +44,37 @@ async def create_one(
         raise HTTPException(status_code=s.HTTP_404_NOT_FOUND, detail=details)
 
     try:
-        logger.debug(f"Checking if organization {org.handle!r} has 'melt-key' authprovider.")
-        provider_filters = {"type": "melt-key", "organization_ref.handle": org.handle}
-        melt_key_authprovider = reading.read_one_filters(
-            creator={}, model=AuthProviderDAO, **provider_filters
-        )
+        logger.debug(f"Checking if org {org.handle!r} has 'melt-key' authprovider.")
+        filters = {"type": "melt-key", "organization_ref.handle": org.handle}
+        _ = reading.read_one_filters(creator={}, model=AuthProviderDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "client_name"],
-            msg="Cannot create token for organization without 'melt-key' authprovider.",
-            type="DocumentNotFound",  # TODO: other error type here?
+            msg="Cannot create token for organization with no 'melt-key' authprovider.",
+            type="DocumentNotFound",
         )
         raise HTTPException(status_code=s.HTTP_404_NOT_FOUND, detail=details)
 
-    logger.debug(f"Validating scoped access level: {creator.client_name!r} -> {client_name!r}.")
+    logger.debug(f"Validating access: {creator.client_name!r} -> {client_name!r}.")
     validate_scope_access_level(client_name, creator.client_name)
 
-    logger.debug("Creating token.")
-    token = TokenCreationIntermediate(
-        client_name=client_name,
-        name=name,
-        value=create_token(client_name, name),
-    )
-    token = creation.create_one(token, model=TokenDAO, creator=creator)
-    token_out = TokenCreationOut(**token.model_dump())
+    try:
+        logger.debug(f"Creating {name!r} token.")
+        token = TokenCreationIntermediate(
+            client_name=client_name,
+            name=name,
+            value=create_token(client_name, name),
+        )
+        token = creation.create_one(token, model=TokenDAO, creator=creator)
+        token_out = TokenCreationOut(**token.model_dump())
+    except HTTPException as e:
+        details = RequestValidationError(
+            loc=["path", "name"],
+            msg=f"Token {name!r} already exists.",
+            type="DuplicateKeyError",
+        )
+        raise HTTPException(status_code=s.HTTP_409_CONFLICT, detail=details)
+
     return token_out
 
 
@@ -85,8 +94,9 @@ async def delete_one(
     logger.debug(f"Attempting to DELETE token {token_name!r} for {client_name!r}.")
     creator: Creator = request.state.creator
     try:
-        organization = f"/{client_name.split("/")[1]}"
-        logger.debug(f"Checking if organization entity with handle {organization!r} exists.")
+        org_handle = client_name.split("/")[1]
+        organization = f"/{org_handle}"
+        logger.debug(f"Checking if organization entity {organization!r} exists.")
         filters = {"handle": organization, "type": "organization"}
         reading.read_one_filters(creator={}, model=EntityDAO, **filters)
     except HTTPException as e:
@@ -97,11 +107,20 @@ async def delete_one(
         )
         raise HTTPException(status_code=s.HTTP_404_NOT_FOUND, detail=details)
 
-    logger.debug(f"Validating scoped access level: {creator.client_name!r} -> {client_name!r}.")
+    logger.debug(f"Validating access: {creator.client_name!r} -> {client_name!r}.")
     validate_scope_access_level(client_name, creator.client_name)
+
+    filters = {"client_name": client_name, "name": token_name}
+    try:
+        reading.read_one_filters(creator={}, model=TokenDAO, **filters)
+    except HTTPException as e:
+        details = RequestValidationError(
+            loc=["path", "token_name"],
+            msg=f"Token {token_name!r} does not exist.",
+            type="DocumentNotFound",
+        )
+        raise HTTPException(status_code=s.HTTP_404_NOT_FOUND, detail=details)
 
     logger.debug("Deleting token.")
     # TODO: needs soft delete.
-    TokenDAO.collection().delete_one(
-        filter=dict(client_name=client_name, name=token_name)
-    )
+    TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).delete_one(filters)
