@@ -4,9 +4,8 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi import status as s
 
-from ..auth.melt_key.token import validate_token_against_db
-from ..injections import privileges
-from ..schemas import Creator
+from ..authz import privileges
+from ..schemas import Infostar
 from ..schemas.gen_fields import GeneratedFields
 from ..utils import creation, reading
 from .models import EntityDAO
@@ -23,15 +22,14 @@ async def create_one(
     body: EntityIn = Body(
         openapi_examples=EntityIn.model_config["json_schema_extra"]["examples"][0]
     ),
-    creator: Creator = Depends(privileges.is_valid_admin),
+    infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
-    # validate_creation_access_level(org_in.name, creator.client_name)  # TODO implement this
     if body.owner_handle:
         owner_ref = EntityDAO.from_handle_to_ref(body.owner_handle)
     else:
         owner_ref = None
     schema_in = EntityIntermediate(owner_ref=owner_ref, **body.model_dump())
-    entity = creation.create_one(schema_in, EntityDAO, creator)
+    entity = creation.create_one(schema_in, EntityDAO, infostar)
     return GeneratedFields(**entity.model_dump(by_alias=True))
 
 
@@ -39,13 +37,13 @@ async def create_one(
 @router.get("/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_many(
     request: Request,
-    creator: Creator = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(privileges.is_valid_user),
     name: Optional[str] = Query(None),
     external_id_key: Optional[str] = Query(None, alias="external_ids.key"),
     external_id_value: Optional[str] = Query(None, alias="external_ids.value"),
 ):
     orgs = reading.read_many(
-        creator=creator,
+        infostar=infostar,
         model=EntityDAO,
         **request.query_params,
     )

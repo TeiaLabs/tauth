@@ -85,7 +85,7 @@ class RequestAuthenticator:
                 "$elemMatch": {"name": "audience", "value": aud[0]}
             }
 
-        provider = reading.read_one(creator={}, model=AuthProviderDAO, **filters)  # type: ignore
+        provider = reading.read_one(infostar={}, model=AuthProviderDAO, **filters)  # type: ignore
         return provider
 
     @staticmethod
@@ -174,33 +174,6 @@ class RequestAuthenticator:
         request: Request, user_data: dict, authprovider: AuthProviderDAO
     ) -> Infostar:
         logger.debug("Assembling Infostar.")
-        try:
-            user = reading.read_one_filters(
-                creator={},
-                model=EntityDAO,
-                handle=user_data["user_email"],
-                type="user",
-            )
-        except HTTPException as e:
-            if e.status_code in (404, 409):
-                user_i = EntityIntermediate(
-                    handle=user_data["user_email"],
-                    owner_ref=authprovider.organization_ref.model_dump(),  # type: ignore
-                    type="user",
-                )
-                user = creation.create_one(
-                    user_i,
-                    EntityDAO,
-                    creator={
-                        "client_name": "system",
-                        "token_name": "system",
-                        "user_email": "system@ass.com",
-                        "user_ip": "system",
-                    },  # type: ignore
-                )
-            else:
-                raise e
-
         if request.client is not None:
             ip = request.client.host
         elif request.headers.get("x-tauth-ip"):
@@ -225,6 +198,25 @@ class RequestAuthenticator:
             client_ip=ip,
             original=None,
         )
+
+        try:
+            user = reading.read_one_filters(
+                infostar=infostar,
+                model=EntityDAO,
+                handle=user_data["user_email"],
+                type="user",
+            )
+        except HTTPException as e:
+            if e.status_code in (404, 409):
+                user_i = EntityIntermediate(
+                    handle=user_data["user_email"],
+                    owner_ref=authprovider.organization_ref.model_dump(),  # type: ignore
+                    type="user",
+                )
+                user = creation.create_one(user_i, EntityDAO, infostar=infostar)
+            else:
+                raise e
+
         return infostar
 
     @classmethod

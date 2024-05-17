@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
-from ...schemas.creator import Creator
+from ...schemas import Creator, Infostar
 
 
 class TokenMeta(BaseModel):

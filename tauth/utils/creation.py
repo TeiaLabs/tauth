@@ -3,16 +3,16 @@ from typing import Type, TypeVar
 from fastapi import HTTPException
 from pydantic import BaseModel
 from pymongo import errors as pymongo_errors
+from redbaby.document import Document
 
-from ..schemas import Creator
+from ..schemas import Infostar
 from ..settings import Settings
-from .teia_behaviors import Authoring
 
-T = TypeVar("T", bound=Authoring)
+T = TypeVar("T", bound=Document)
 
 
-def create_one(item_in: BaseModel, model: Type[T], creator: Creator) -> T:
-    item = model(**item_in.model_dump(), created_by=creator)
+def create_one(item_in: BaseModel, model: Type[T], infostar: Infostar) -> T:
+    item = model(**item_in.model_dump(), created_by=infostar)  # type: ignore
     try:
         res = model.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(
             item.bson()

@@ -5,14 +5,17 @@ is_valid_user - anyone with a valid key
 is_valid_admin - token_name == default
 is_valid_superuser - token_name == default and client_name == $root
 """
+
 from typing import Callable
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 
 from ..schemas import Creator
 
 
-def get_creator(validate_access: Callable[[Creator], bool]) -> Callable[[Request], Creator]:
+def get_creator(
+    validate_access: Callable[[Creator], bool]
+) -> Callable[[Request], Creator]:
     def wrapper(request: Request) -> Creator:
         c = request.state.creator
         if validate_access(c):
@@ -25,6 +28,7 @@ def get_creator(validate_access: Callable[[Creator], bool]) -> Callable[[Request
             }
             # TODO: delegate exception raising to the wrapped function
             raise HTTPException(status_code=s, detail=d)
+
     return wrapper
 
 

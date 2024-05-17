@@ -1,5 +1,7 @@
-from ..schemas import Creator
+from redbaby.document import Document
+
+from ..schemas import Infostar
 
 
 class Authoring:
-    created_by: Creator
+    created_by: Infostar

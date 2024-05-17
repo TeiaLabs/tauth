@@ -22,12 +22,11 @@ from ..auth.melt_key.schemas import (
 )
 from ..auth.melt_key.token import create_token
 from ..authproviders.models import AuthProviderDAO
+from ..authz import privileges
 from ..entities.models import EntityDAO
-from ..injections import privileges
-from ..schemas import Creator
+from ..schemas import Creator, Infostar
 from ..settings import Settings
 from ..utils import creation, reading
-from . import users as users_controller
 
 router = APIRouter(prefix="/clients", tags=["legacy"])
 
@@ -37,7 +36,7 @@ router = APIRouter(prefix="/clients", tags=["legacy"])
 async def create_one(
     request: Request,
     client_in: ClientCreation = Body(),
-    creator: Creator = Depends(privileges.is_valid_admin),
+    infostar: Infostar = Depends(privileges.is_valid_admin),
 ) -> ClientCreationOut:
     """
     Create a new client.
@@ -46,6 +45,7 @@ async def create_one(
     - In order to create `/teia/athena/chat`, you must first create `/teia/athena`.
     - Trailing slashes are ignored.
     """
+    creator: Creator = request.state.creator
     logger.debug(f"Creating a new client: {client_in.name!r}.")
     logger.debug(f"Validating access: {creator.client_name!r} -> {client_in.name!r}.")
     validate_creation_access_level(client_in.name, creator.client_name)
@@ -55,7 +55,7 @@ async def create_one(
         organization = f"/{org_handle}"
         logger.debug(f"Checking if organization entity {organization!r} exists.")
         filters = {"handle": organization, "type": "organization"}
-        org = reading.read_one_filters(creator={}, model=EntityDAO, **filters)
+        org = reading.read_one_filters(infostar, model=EntityDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
             loc=["body", "name"],
@@ -67,11 +67,7 @@ async def create_one(
     try:
         logger.debug(f"Checking if org {org.handle!r} has 'melt-key' authprovider.")
         filters = {"type": "melt-key", "organization_ref.handle": org.handle}
-        provider = reading.read_one_filters(
-            creator={},
-            model=AuthProviderDAO,
-            **filters,
-        )
+        provider = reading.read_one_filters(infostar, model=AuthProviderDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
             loc=["body", "name"],
@@ -107,8 +103,10 @@ async def create_one(
             name=token_name,
             value=create_token(client_in.name, token_name),
         )
-        token = creation.create_one(token, model=TokenDAO, creator=creator)
-        token_out = TokenCreationOut(**token.model_dump())
+        token = creation.create_one(token, model=TokenDAO, infostar=infostar)
+        token_out = TokenCreationOut(
+            **token.model_dump(exclude={"created_by"}), created_by=creator
+        )
     except HTTPException as e:
         details = RequestValidationError(
             loc=["body", "name"],
@@ -124,7 +122,7 @@ async def create_one(
     authprovider_collection.update_one(
         filter={"_id": provider.id},
         update={
-            "$push": {
+            "$addToSet": {
                 "extra": {
                     "name": "melt_key_client",
                     "value": client_in.name,
@@ -148,6 +146,7 @@ async def create_one(
 @router.get("/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_many(request: Request) -> list[ClientOut]:
     creator: Creator = request.state.creator
+    infostar: Infostar = request.state.infostar
     logger.debug(f"Fetching clients for client: {creator.client_name!r}.")
 
     org_handle = creator.client_name.split("/")[1]
@@ -155,16 +154,17 @@ async def read_many(request: Request) -> list[ClientOut]:
     logger.debug(f"Organization entity handle: {organization!r}.")
 
     # Root token has access to multiple authproviders
-    logger.debug(f"Reading 'melt-key' authprovider(s) for {creator.client_name!r}.")
+    logger.debug(f"Reading 'melt-key' authprovider(s) for {organization!r}.")
     filters = {
         "type": "melt-key",
         "organization_ref.handle": {"$regex": f"^{organization}"},
     }
-    providers = reading.read_many(creator={}, model=AuthProviderDAO, **filters)
+    providers = reading.read_many(infostar, model=AuthProviderDAO, **filters)
 
     logger.debug(f"Finding all clients for authprovider(s).")
     clients = []
     for provider in providers:
+        logger.debug(f"Reading clients for authprovider {provider.id!r}.")
         for e in provider.extra:
             if e.name == "melt_key_client":
                 # We need to filter the clients depending on the subclient level
@@ -173,7 +173,7 @@ async def read_many(request: Request) -> list[ClientOut]:
                 clients.append(
                     ClientOut(
                         created_at=provider.created_at,
-                        created_by=provider.created_by,
+                        created_by=creator,
                         _id=str(provider.id),
                         name=e.value,
                     )
@@ -183,16 +183,17 @@ async def read_many(request: Request) -> list[ClientOut]:
 
 
 @router.get("/{name:path}", status_code=s.HTTP_200_OK)
-@router.get("/{name:path}/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_one(request: Request, name: str) -> ClientOutJoinTokensAndUsers:
     creator: Creator = request.state.creator
+    infostar: Infostar = request.state.infostar
     logger.debug(f"Reading client {name!r}.")
 
     logger.debug(f"Validating access: {creator.client_name!r} -> {name!r}.")
     validate_scope_access_level(name, creator.client_name)
-    # check if extra.key == melt_key_client has extra.value == name
+
+    logger.debug(f"Reading authprovider for client {name!r}.")
     reading.read_one_filters(
-        creator=creator,
+        infostar=infostar,
         model=AuthProviderDAO,
         type="melt-key",
         **{
@@ -201,26 +202,40 @@ async def read_one(request: Request, name: str) -> ClientOutJoinTokensAndUsers:
         },
     )
     logger.debug(f"Reading tokens for client {name!r}.")
-    tokens: list[TokenDAO] = reading.read_many(
-        creator={}, model=TokenDAO, client_name=name
-    )
-    tokens_view = [TokenMeta(**t.model_dump()) for t in tokens]
+    filters = {"client_name": name}
+    tokens: list[TokenDAO] = reading.read_many(infostar, model=TokenDAO, **filters)
+    tokens_view = [
+        TokenMeta(
+            **t.model_dump(exclude={"created_by"}),
+            created_by=Creator.from_infostar(t.created_by),
+        )
+        for t in tokens
+    ]
 
     org_handle = name.split("/")[1]
     organization = f"/{org_handle}"
     logger.debug(f"Reading organization entity: {organization!r}.")
     filters = {"type": "organization", "handle": organization}
-    org = reading.read_one_filters(creator={}, model=EntityDAO, **filters)
+    org = reading.read_one_filters(infostar, model=EntityDAO, **filters)
 
     logger.debug(f"Reading users for organization entity {org.handle!r}.")
-    users = await users_controller.read_many(request, org.handle, creator)
+    users = reading.read_many(
+        infostar, EntityDAO, **{"type": "user", "owner_ref.handle": org.handle}
+    )
 
     client_view = ClientOutJoinTokensAndUsers(
         created_at=org.created_at,
-        created_by=org.created_by,
-        _id=org.id,  # TODO: Maybe this should be the authprovider ID
+        created_by=creator,
+        _id=org.id,  # TODO: Maybe this should be the authprovider ID  nei: kkkk
         name=name,
         tokens=tokens_view,
-        users=users,
+        users=[
+            UserOut(
+                **u.model_dump(exclude={"created_by"}),
+                created_by=creator,
+                email=u.handle,
+            )
+            for u in users
+        ],
     )
     return client_view

@@ -53,6 +53,7 @@ def validate_token_against_db(token: str, client_name: str, token_name: str):
 
 
 def sanitize_client_name(client_name: str, loc: list[str] = ["body", "name"]) -> str:
+    print(client_name)
     if client_name != "/":
         clean_client_name = client_name.rstrip("/").lower()
     else:

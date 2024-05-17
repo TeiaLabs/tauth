@@ -1,6 +1,5 @@
 from typing import Literal, Optional
 
-from cachetools import Cache, cached
 from pydantic import Field
 from pymongo import IndexModel
 from redbaby.behaviors.objectids import ObjectIdMixin
@@ -8,13 +7,11 @@ from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
 from ..entities.models import OrganizationRef, ServiceRef
-from ..schemas import Creator
 from ..schemas.attribute import Attribute
 from ..utils.teia_behaviors import Authoring
 
 
 class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
-    created_by: Creator
     external_ids: list[Attribute] = Field(
         default_factory=list
     )  # dynamic provider selection: issuer, audience

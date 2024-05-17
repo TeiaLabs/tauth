@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, Path, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request
 from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
@@ -8,8 +8,9 @@ from ..auth.melt_key.models import TokenDAO
 from ..auth.melt_key.schemas import TokenCreationIntermediate, TokenCreationOut
 from ..auth.melt_key.token import create_token
 from ..authproviders.models import AuthProviderDAO
+from ..authz import privileges
 from ..entities.models import EntityDAO
-from ..schemas.creator import Creator
+from ..schemas import Creator, Infostar
 from ..settings import Settings
 from ..utils import creation, reading
 
@@ -21,12 +22,14 @@ async def create_one(
     request: Request,
     client_name: str = Path(),
     name: str = Body(..., embed=True),
+    infostar: Infostar = Depends(privileges.is_valid_user),
 ) -> TokenCreationOut:
     """
     Create a token.
 
     Clients can create tokens for themselves and their subclients, but not for parent clients.
     """
+    creator: Creator = request.state.creator
     logger.debug(f"Attempting to CREATE token {name!r} for {client_name!r}.")
     creator: Creator = request.state.creator
     try:
@@ -34,7 +37,7 @@ async def create_one(
         organization = f"/{org_handle}"
         logger.debug(f"Checking if organization entity {organization!r} exists.")
         filters = {"handle": organization, "type": "organization"}
-        org = reading.read_one_filters(creator={}, model=EntityDAO, **filters)
+        org = reading.read_one_filters(infostar, model=EntityDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "client_name"],
@@ -46,7 +49,7 @@ async def create_one(
     try:
         logger.debug(f"Checking if org {org.handle!r} has 'melt-key' authprovider.")
         filters = {"type": "melt-key", "organization_ref.handle": org.handle}
-        _ = reading.read_one_filters(creator={}, model=AuthProviderDAO, **filters)
+        _ = reading.read_one_filters(infostar, model=AuthProviderDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "client_name"],
@@ -65,8 +68,11 @@ async def create_one(
             name=name,
             value=create_token(client_name, name),
         )
-        token = creation.create_one(token, model=TokenDAO, creator=creator)
-        token_out = TokenCreationOut(**token.model_dump())
+        token = creation.create_one(token, model=TokenDAO, infostar=infostar)
+        token_out = TokenCreationOut(
+            **token.model_dump(exclude={"created_by"}),
+            created_by=creator,
+        )
     except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "name"],
@@ -85,12 +91,14 @@ async def delete_one(
     request: Request,
     client_name: str = Path(),
     token_name: str = Path(),
+    infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
     """
     Delete a token.
 
     Clients can delete tokens for themselves and their subclients, but not for parent clients.
     """
+    creator: Creator = request.state.creator
     logger.debug(f"Attempting to DELETE token {token_name!r} for {client_name!r}.")
     creator: Creator = request.state.creator
     try:
@@ -98,7 +106,7 @@ async def delete_one(
         organization = f"/{org_handle}"
         logger.debug(f"Checking if organization entity {organization!r} exists.")
         filters = {"handle": organization, "type": "organization"}
-        reading.read_one_filters(creator={}, model=EntityDAO, **filters)
+        reading.read_one_filters(infostar, model=EntityDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "client_name"],
@@ -112,7 +120,7 @@ async def delete_one(
 
     filters = {"client_name": client_name, "name": token_name}
     try:
-        reading.read_one_filters(creator={}, model=TokenDAO, **filters)
+        reading.read_one_filters(infostar, model=TokenDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "token_name"],

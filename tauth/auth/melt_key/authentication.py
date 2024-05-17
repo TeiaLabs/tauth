@@ -5,7 +5,6 @@ from fastapi import HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 from pydantic import validate_email
-from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
@@ -34,7 +33,7 @@ class RequestAuthenticator:
         )
         infostar = cls.get_request_infostar(creator, request)
         # TODO: create user entity in DB
-        cls.create_user_on_db(creator, token_creator_user_email)
+        cls.create_user_on_db(creator, infostar, token_creator_user_email)
 
         if request.client is not None:
             creator.user_ip = request.client.host
@@ -53,7 +52,7 @@ class RequestAuthenticator:
         return client, name, value
 
     @staticmethod
-    def get_organization_for_client(creator: Creator) -> EntityDAO:
+    def get_organization_for_client(creator: Creator, infostar: Infostar) -> EntityDAO:
         """Return the organization entity for a given client name."""
         if creator.client_name == "/":
             logger.debug(f"Using root token, org = /.")
@@ -64,7 +63,7 @@ class RequestAuthenticator:
                 type="organization",
             )
             try:  # TODO read or create
-                org = creation.create_one(org_i, EntityDAO, creator=creator)
+                org = creation.create_one(org_i, EntityDAO, infostar=infostar)
                 logger.debug(f"Created root organization entity.")
             except HTTPException as e:
                 if e.status_code != 409:
@@ -73,11 +72,15 @@ class RequestAuthenticator:
         org_handle = creator.client_name.split("/")[1]
         organization = f"/{org_handle}"
         filters_org = {"type": "organization", "handle": organization}
-        org = reading.read_one_filters(creator=creator, model=EntityDAO, **filters_org)
+        org = reading.read_one_filters(
+            infostar=infostar, model=EntityDAO, **filters_org
+        )
         return org
 
     @staticmethod
-    def get_authprovider(organization: EntityDAO, creator: Creator) -> AuthProviderDAO:
+    def get_authprovider(
+        organization: EntityDAO, creator: Creator, infostar: Infostar
+    ) -> AuthProviderDAO:
         """Return the 'melt-key' AuthProvider for the given client name."""
         logger.debug(f"Getting 'melt-key' provider for org {organization.handle!r}.")
         if organization.handle == "/":
@@ -85,10 +88,11 @@ class RequestAuthenticator:
                 organization_ref=OrganizationRef(**organization.model_dump()),
                 type="melt-key",
                 service_ref=None,
+                extra=[Attribute(name="melt_key_client", value="/")],
             )
             try:  # TODO read or create
                 provider = creation.create_one(
-                    provider_i, AuthProviderDAO, creator=creator
+                    provider_i, AuthProviderDAO, infostar=infostar
                 )
                 logger.debug(
                     f"Created 'melt-key' provider for org {organization.handle!r}."
@@ -100,9 +104,7 @@ class RequestAuthenticator:
             "type": "melt-key",
             "organization_ref.handle": organization.handle,
         }
-        provider = reading.read_one_filters(
-            creator={}, model=AuthProviderDAO, **filters
-        )
+        provider = reading.read_one_filters(infostar, model=AuthProviderDAO, **filters)
         return provider
 
     @staticmethod
@@ -114,8 +116,8 @@ class RequestAuthenticator:
         infostar = Infostar(
             request_id=PyObjectId(),
             apikey_name=creator.token_name,
-            authprovider_type="melt-api-key",
-            authprovider_org="/teialabs",
+            authprovider_type="melt-key",
+            authprovider_org=owner_handle,
             # extra=InfostarExtra(
             #     geolocation=request.headers.get("x-geo-location"),
             #     jwt_sub=request.headers.get("x-jwt-sub"),
@@ -183,12 +185,12 @@ class RequestAuthenticator:
     def create_user_on_db(
         cls,
         creator: Creator,
+        infostar: Infostar,
         token_creator_email: Optional[EmailStr],
     ):
         logger.debug("Registering user.")
-        print(creator)
-        client_org = cls.get_organization_for_client(creator)
-        authprovider = cls.get_authprovider(client_org, creator)
+        client_org = cls.get_organization_for_client(creator, infostar)
+        authprovider = cls.get_authprovider(client_org, creator, infostar)
         org_ref = EntityRef(**client_org.model_dump())
         melt_key_client_extra = Attribute(
             name="melt_key_client", value=creator.client_name
@@ -203,7 +205,7 @@ class RequestAuthenticator:
                 f"Checking if user {user_creator_email!r} exists in org {client_org.handle!r}."
             )
             user_data = reading.read_one_filters(
-                creator={},
+                infostar,
                 model=EntityDAO,
                 handle=user_creator_email,
                 owner_ref=org_ref.model_dump(),
@@ -231,14 +233,5 @@ class RequestAuthenticator:
             type="user",
             extra=[melt_key_client_extra],
         )
-        user = creation.create_one(
-            user_i,
-            EntityDAO,
-            creator={
-                "client_name": creator.user_email,
-                "token_name": creator.client_name,
-                "user_email": user_creator_email,
-                # "user_ip": "system",
-            },  # type: ignore
-        )
+        user = creation.create_one(user_i, EntityDAO, infostar=infostar)
         logger.debug(f"Registered {user_creator_email!r} in org {client_org.handle!r}.")
