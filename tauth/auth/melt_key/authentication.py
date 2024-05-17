@@ -9,7 +9,8 @@ from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
-from ...entities.models import EntityDAO, EntityRef
+from ...authproviders.schemas import AuthProviderMoreIn
+from ...entities.models import EntityDAO, EntityRef, OrganizationRef
 from ...entities.schemas import EntityIntermediate
 from ...schemas import Creator, Infostar
 from ...schemas.attribute import Attribute
@@ -52,24 +53,53 @@ class RequestAuthenticator:
         return client, name, value
 
     @staticmethod
-    def get_organization_for_client(client_name: str) -> EntityDAO:
-        """Returns the organization entity for a given client name."""
-        if client_name == "/":
-            logger.debug(f"Using root token, getting default '/teialabs' entity org.")
-            organization = "/teialabs"
-        else:
-            logger.debug(f"Getting organization for client {client_name!r}.")
-            org_handle = client_name.split("/")[1]
-            organization = f"/{org_handle}"
+    def get_organization_for_client(creator: Creator) -> EntityDAO:
+        """Return the organization entity for a given client name."""
+        if creator.client_name == "/":
+            logger.debug(f"Using root token, org = /.")
+            organization = "/"
+            org_i = EntityIntermediate(
+                handle="/",
+                owner_ref=None,
+                type="organization",
+            )
+            try:  # TODO read or create
+                org = creation.create_one(org_i, EntityDAO, creator=creator)
+                logger.debug(f"Created root organization entity.")
+            except HTTPException as e:
+                if e.status_code != 409:
+                    raise e
+        logger.debug(f"Getting organization for client {creator.client_name!r}.")
+        org_handle = creator.client_name.split("/")[1]
+        organization = f"/{org_handle}"
         filters_org = {"type": "organization", "handle": organization}
-        org = reading.read_one_filters(creator={}, model=EntityDAO, **filters_org)
+        org = reading.read_one_filters(creator=creator, model=EntityDAO, **filters_org)
         return org
 
     @staticmethod
-    def get_authprovider(organization: EntityDAO) -> AuthProviderDAO:
-        """Returns the 'melt-key' AuthProvider for the given client name."""
+    def get_authprovider(organization: EntityDAO, creator: Creator) -> AuthProviderDAO:
+        """Return the 'melt-key' AuthProvider for the given client name."""
         logger.debug(f"Getting 'melt-key' provider for org {organization.handle!r}.")
-        filters = {"type": "melt-key", "organization_ref.handle": organization.handle}
+        if organization.handle == "/":
+            provider_i = AuthProviderMoreIn(
+                organization_ref=OrganizationRef(**organization.model_dump()),
+                type="melt-key",
+                service_ref=None,
+            )
+            try:  # TODO read or create
+                provider = creation.create_one(
+                    provider_i, AuthProviderDAO, creator=creator
+                )
+                logger.debug(
+                    f"Created 'melt-key' provider for org {organization.handle!r}."
+                )
+            except HTTPException as e:
+                if e.status_code != 409:
+                    raise e
+        filters = {
+            "type": "melt-key",
+            "organization_ref.handle": organization.handle,
+        }
         provider = reading.read_one_filters(
             creator={}, model=AuthProviderDAO, **filters
         )
@@ -156,8 +186,9 @@ class RequestAuthenticator:
         token_creator_email: Optional[EmailStr],
     ):
         logger.debug("Registering user.")
-        client_org = cls.get_organization_for_client(creator.client_name)
-        authprovider = cls.get_authprovider(client_org)
+        print(creator)
+        client_org = cls.get_organization_for_client(creator)
+        authprovider = cls.get_authprovider(client_org, creator)
         org_ref = EntityRef(**client_org.model_dump())
         melt_key_client_extra = Attribute(
             name="melt_key_client", value=creator.client_name

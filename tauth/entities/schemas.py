@@ -46,7 +46,7 @@ class EntityIn(BaseModel):
 class EntityIntermediate(BaseModel):
     external_ids: list[Attribute] = Field(default_factory=list)
     extra: list[Attribute] = Field(default_factory=list)
-    handle: str = Field(..., min_length=3, max_length=50)
+    handle: str = Field(...)
     owner_ref: Optional[EntityRef] = Field(None)
     roles: list[str] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]

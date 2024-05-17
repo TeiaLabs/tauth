@@ -10,7 +10,7 @@ from ..utils import reading
 router = APIRouter(prefix="/clients", tags=["legacy"])
 
 
-@router.get("/{name}/users", status_code=200)
+@router.get("/{name:path}/users", status_code=200)
 async def read_many(
     request: Request,
     name: str = Path(...),

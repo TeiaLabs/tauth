@@ -30,6 +30,7 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     @classmethod
     def indexes(cls) -> list[IndexModel]:
         idxs = [
+            IndexModel([("organization_ref.handle", 1), ("type", 1)], unique=True),
             IndexModel([("external_ids.name", 1), ("external_ids.value", 1)]),
         ]
         return idxs

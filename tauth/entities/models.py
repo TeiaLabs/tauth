@@ -73,6 +73,9 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
         if entity:
             return EntityRef(type=entity.type, handle=entity.handle, id=entity.id)
 
+    def to_ref(self) -> EntityRef:
+        return EntityRef(type=self.type, handle=self.handle, id=self.id)
+
     def hashable_fields(self) -> list[str]:
         l = [self.handle]
         if self.owner_ref:

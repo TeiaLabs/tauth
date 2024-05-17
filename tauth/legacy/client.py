@@ -190,7 +190,16 @@ async def read_one(request: Request, name: str) -> ClientOutJoinTokensAndUsers:
 
     logger.debug(f"Validating access: {creator.client_name!r} -> {name!r}.")
     validate_scope_access_level(name, creator.client_name)
-
+    # check if extra.key == melt_key_client has extra.value == name
+    reading.read_one_filters(
+        creator=creator,
+        model=AuthProviderDAO,
+        type="melt-key",
+        **{
+            "extra.name": "melt_key_client",
+            "extra.value": name,
+        },
+    )
     logger.debug(f"Reading tokens for client {name!r}.")
     tokens: list[TokenDAO] = reading.read_many(
         creator={}, model=TokenDAO, client_name=name
