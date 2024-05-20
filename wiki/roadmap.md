@@ -27,3 +27,10 @@
     2. Assymetric keys in microservices (self-signing and JWT modification).
     3. TAuth service key registry.
 13. [ ] New user-data abstraction.
+
+## abstractions needed
+
+- multiple ownership
+  - eg: app might belong to its creator, to a company, and to a speficic business unit
+- outlier pattern
+  - user logins

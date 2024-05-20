@@ -3,14 +3,24 @@ Migration script to convert data from v1 to v2.
 """
 
 import argparse
+from typing import Callable, Literal
 
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
+from redbaby.pyobjectid import PyObjectId
+from tqdm import tqdm
 
+from tauth.authproviders.models import AuthProviderDAO
 from tauth.entities.models import EntityDAO, EntityRef
 from tauth.entities.schemas import EntityIntermediate
+from tauth.legacy.tokens import TokenDAO
 from tauth.schemas import Creator, Infostar
+from tauth.schemas.attribute import Attribute
+
+OID = PyObjectId()
+MY_IP = "127.0.0.1"
+MY_EMAIL = "sysadmin@teialabs.com"
 
 
 def get_args():
@@ -28,11 +38,29 @@ def get_args():
     return args
 
 
-def conditional_action(action, inaction, dry_run: bool):
+class Partial:
+    def __init__(self, func, *args, **kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*self.args, *args, **self.kwargs, **kwargs)
+
+    def __repr__(self) -> str:
+        return f"Partial({self.func!r}, {self.args!r}, {self.kwargs!r})"
+
+    def __str__(self) -> str:
+        return f"Partial<{self.func}({self.args}, {self.kwargs})>"
+
+
+def conditional_action(
+    action: Partial, dry_run: bool, inaction: Callable[[Partial]] = print
+):
     if not dry_run:
         action()
     else:
-        inaction()
+        inaction(action)
 
 
 def conditional_insert(collection: Collection, document: dict, dry_run: bool):
@@ -42,9 +70,8 @@ def conditional_insert(collection: Collection, document: dict, dry_run: bool):
         print(f"Would insert: '{document}' into '{collection.name}'.")
 
 
-def migrate_entities(db: Database, dry_run: bool):
+def migrate_orgs(db: Database, dry_run: bool):
     entity_col = db[EntityDAO.collection_name()]
-    ## Organizations
     # Create root organization entity for '/' token
     root_org = EntityIntermediate(
         handle="/",
@@ -69,7 +96,13 @@ def migrate_entities(db: Database, dry_run: bool):
             type="organization",
         )
         conditional_insert(entity_col, org.model_dump(), dry_run)
-    ## services
+    # query 'organizations' collection for all auth0 org-ids
+    # TODO
+
+
+def migrate_services(db: Database, dry_run: bool):
+    entity_col = db[EntityDAO.collection_name()]
+    client_names = db["tokens"].distinct("client_name")
     # extract the service names (/teialabs/athena -> [athena], /osf/allai/code -> [allai, code])
     service_names = {
         client_name.split("/")[1:]: tuple(client_name.split("/")[2:])
@@ -89,29 +122,138 @@ def migrate_entities(db: Database, dry_run: bool):
         conditional_insert(entity_col, service.model_dump(), dry_run)
 
 
+def migrate_users(db: Database, dry_run: bool):
+    entity_col = db[EntityDAO.collection_name()]
+    # query 'users' collection
+    users = db["users"].find()
+    for user in users:
+        # extract the organization (e.g., `/teialabs/athena` -> `/teialabs`)
+        # TODO: what if client_name == / ?
+        org_name = user["client_name"].split("/")[1]
+        org = entity_col.find_one({"handle": org_name})
+        if not org:
+            raise ValueError(f"Organization entity '{org_name}' not found.")
+        org_ref = EntityDAO(**org).to_ref()
+        # create user entity as child of organization
+        user_entity = EntityIntermediate(
+            handle=user["email"],
+            owner_ref=org_ref,
+            type="user",
+        )
+        conditional_insert(entity_col, user_entity.model_dump(), dry_run)
+        # TODO: save user's first login, so we don't lose this info
+        # created_at attr of the users collection
+
+
+def get_entity_ref_from_client_name(
+    db: Database, client_name: str, mode: Literal["service", "organization"]
+) -> EntityRef:
+    entity_col = db[EntityDAO.collection_name()]
+    org_name, *service_name = client_name.split("/")[1:]
+    if mode == "service":
+        entity = entity_col.find_one({"handle": "--".join(service_name)})
+    elif mode == "organization":
+        entity = entity_col.find_one({"handle": f"/{org_name}"})
+    else:
+        raise ValueError(f"Invalid mode '{mode}'.")
+    if not entity:
+        raise ValueError(f"Entity '{entity}' not found.")
+    return EntityDAO(**entity).to_ref()
+
+
+def migrate_melt_keys(db: Database, dry_run: bool):
+    entity_col = db[EntityDAO.collection_name()]
+    melt_keys = db[TokenDAO.collection_name()]
+    tokens = list(db["tokens"].find())
+    for t in tqdm(tokens):
+        org = get_entity_ref_from_client_name(db, t["client_name"], "organization")
+        service = get_entity_ref_from_client_name(db, t["client_name"], "service")
+        key = {
+            "client_name": t["client_name"],
+            "name": t["name"],
+            "value": t["value"],
+            "created_by": Infostar(
+                request_id=OID,
+                apikey_name=t["created_by"]["token_name"],
+                authprovider_org="/",
+                authprovider_type="melt-key",
+                extra={},
+                service_handle=service.handle,
+                user_handle=t["email"],
+                user_owner_handle=org.handle,
+                original=None,
+                client_ip=t["created_by"]["user_ip"],
+            ),
+        }
+        conditional_insert(melt_keys, key, dry_run)
+    # Register melt_key_client usage in user entity?
+
+
+def migrate_authproviders(db: Database, dry_run: bool):
+    authproviders = db[AuthProviderDAO.collection_name()]
+    infostar = Infostar(
+        request_id=OID,
+        apikey_name="migrations",
+        authprovider_org="/",
+        authprovider_type="melt-key",
+        extra={},
+        service_handle="tauth",
+        user_handle=MY_EMAIL,
+        user_owner_handle="/",
+        original=None,
+        client_ip=MY_IP,
+    )
+    # create authproviders
+    # melt-key
+    authprovider = AuthProviderDAO(
+        created_by=infostar,
+        extra={},
+        organization_ref=EntityRef(handle="/", type="organization"),
+        service_ref=None,
+        type="melt-key",
+    )
+    # teialabs auth0
+    authprovider = AuthProviderDAO(
+        created_by=infostar,
+        external_ids=[
+            Attribute(name="issuer", value="https://teialabs.auth0.com"),
+            Attribute(name="audience", value="???"),
+        ],
+        extra={},
+        organization_ref=EntityRef(handle="/teialabs", type="organization"),
+        service_ref=EntityRef(handle="athena--chat", type="service"),
+        type="auth0",
+    )
+    # osf auth0 (chat)
+    authprovider = AuthProviderDAO(
+        created_by=infostar,
+        external_ids=[
+            Attribute(name="issuer", value="https://osf.eu.auth0.com"),
+            Attribute(name="audience", value="???"),
+        ],
+        extra={},
+        organization_ref=EntityRef(handle="/osf", type="organization"),
+        service_ref=EntityRef(handle="allai--chat", type="service"),
+        type="auth0",
+    )
+    # osf auth0 (code)
+    authprovider = AuthProviderDAO(
+        created_by=infostar,
+        external_ids=[
+            Attribute(name="issuer", value="https://osf.eu.auth0.com"),
+            Attribute(name="audience", value="???"),
+        ],
+        extra={},
+        organization_ref=EntityRef(handle="/osf", type="organization"),
+        service_ref=EntityRef(handle="allai--code", type="service"),
+        type="auth0",
+    )
+
+
 def main():
     args = get_args()
     client = MongoClient(args.host, args.port)
     db = client[args.in_db]
-
-    ## Users
-    #  Query 'tokens' collection for all (client_name, user_email) pairs
-    #  For each pair
-    #    Extract the organization (e.g., `/teialabs/athena` -> `/teialabs`)
-    #    Create user entity as child of organization
-    #    Register melt_key_client usage in user entity
-
-    # Authproviders
-    #  For each organization entity
-    #    Add `melt-key` authprovider
-    #    Register melt_key_client usage in authprovider entity
-
-    # Tokens (melt_key)
-    #  Migrate `tokens` collection to `melt_keys` collection
-
-
-def get_clients(db: MongoClient) -> list[str]:
-    return db["clients"].distinct("name")
 
 
 if __name__ == "__main__":

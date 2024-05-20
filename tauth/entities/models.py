@@ -7,7 +7,6 @@ from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
 from ..schemas.attribute import Attribute
-from ..schemas.infostar import Infostar
 from ..utils.teia_behaviors import Authoring
 
 
