@@ -10,9 +10,8 @@ def teardown(tauth_db: Database):
     try:
         yield None
     finally:
-        tauth_db["clients"].delete_many({"name": "/example_app"})
-        tauth_db["tokens"].delete_many({"name": {"$in": ["default", "second"]}})
-        tauth_db["users"].delete_many({"email": "user@org.com"})
+        tauth_db["entites"].delete_many({"name": "/example_app"})
+        tauth_db["melt_keys"].delete_many({"name": {"$in": ["default", "second"]}})
 
 
 @pytest.fixture(scope="module")

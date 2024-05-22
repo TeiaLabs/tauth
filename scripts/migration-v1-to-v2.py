@@ -96,8 +96,17 @@ def migrate_orgs(db: Database, dry_run: bool):
             type="organization",
         )
         conditional_insert(entity_col, org.model_dump(), dry_run)
-    # query 'organizations' collection for all auth0 org-ids
-    # TODO
+    # query 'organizations' collection for all auth0 org-ids (/teialabs--auth0-org-id)
+    orgs = db["organizations"].find()
+    for org in orgs:
+        conditional_action(
+            Partial(
+                entity_col.update_one,
+                {"handle": org["name"]},
+                {"$set": {"external_ids": org["external_ids"]}},
+            ),
+            dry_run,
+        )
 
 
 def migrate_services(db: Database, dry_run: bool):
@@ -135,14 +144,31 @@ def migrate_users(db: Database, dry_run: bool):
             raise ValueError(f"Organization entity '{org_name}' not found.")
         org_ref = EntityDAO(**org).to_ref()
         # create user entity as child of organization
-        user_entity = EntityIntermediate(
+        user_entity = EntityDAO(
             handle=user["email"],
             owner_ref=org_ref,
             type="user",
+            extra=[
+                Attribute(name="melt_key_client", value=user["client_name"]),
+                Attribute(name="melt_key_client_first_login", value=user["created_at"]),
+                Attribute(name="client_ip", value=user["created_by"]["user_ip"]),
+            ],
+            created_by=Infostar(
+                request_id=OID,
+                apikey_name="migrations",
+                authprovider_org="/",
+                authprovider_type="melt-key",
+                extra={},
+                service_handle="tauth",
+                user_handle=MY_EMAIL,
+                user_owner_handle="/",
+                original=None,
+                client_ip=MY_IP,
+            ),
         )
-        conditional_insert(entity_col, user_entity.model_dump(), dry_run)
-        # TODO: save user's first login, so we don't lose this info
-        # created_at attr of the users collection
+        conditional_action(
+            Partial(entity_col.insert_one, user_entity.model_dump()), dry_run
+        )
 
 
 def get_entity_ref_from_client_name(
@@ -162,7 +188,6 @@ def get_entity_ref_from_client_name(
 
 
 def migrate_melt_keys(db: Database, dry_run: bool):
-    entity_col = db[EntityDAO.collection_name()]
     melt_keys = db[TokenDAO.collection_name()]
     tokens = list(db["tokens"].find())
     for t in tqdm(tokens):
@@ -186,7 +211,6 @@ def migrate_melt_keys(db: Database, dry_run: bool):
             ),
         }
         conditional_insert(melt_keys, key, dry_run)
-    # Register melt_key_client usage in user entity?
 
 
 def migrate_authproviders(db: Database, dry_run: bool):
@@ -205,19 +229,25 @@ def migrate_authproviders(db: Database, dry_run: bool):
     )
     # create authproviders
     # melt-key
-    authprovider = AuthProviderDAO(
-        created_by=infostar,
-        extra={},
-        organization_ref=EntityRef(handle="/", type="organization"),
-        service_ref=None,
-        type="melt-key",
-    )
+    clients = db["clients"].distinct("name")
+    orgs = [f"/{c.split('/')[1]}" for c in clients] + ["/"]
+    for org in orgs:
+        authprovider = AuthProviderDAO(
+            created_by=infostar,
+            extra={},
+            organization_ref=EntityRef(handle=org, type="organization"),
+            service_ref=None,
+            type="melt-key",
+        )
+        conditional_insert(authproviders, authprovider.model_dump(), dry_run)
+
     # teialabs auth0
     authprovider = AuthProviderDAO(
         created_by=infostar,
         external_ids=[
-            Attribute(name="issuer", value="https://teialabs.auth0.com"),
-            Attribute(name="audience", value="???"),
+            Attribute(name="issuer", value="https://dev-z60iog20x0slfn0a.us.auth0.com"),
+            Attribute(name="audience", value="api://allai.chat.webui"),
+            Attribute(name="client-id", value="4FdEO3ncOVFuROab8wf3c0GLyEMWi4f4"),
         ],
         extra={},
         organization_ref=EntityRef(handle="/teialabs", type="organization"),
@@ -228,8 +258,10 @@ def migrate_authproviders(db: Database, dry_run: bool):
     authprovider = AuthProviderDAO(
         created_by=infostar,
         external_ids=[
-            Attribute(name="issuer", value="https://osf.eu.auth0.com"),
-            Attribute(name="audience", value="???"),
+            Attribute(name="issuer", value="https://osfdigital.eu.auth0.com"),
+            Attribute(name="audience", value="api://d4f7a0b5-2a6d-476f-b251-c468a25acdef"),
+            Attribute(name="client-id", value="My4fjEfyByLfRPWzxlkP7rTDSFroklNW"),
+
         ],
         extra={},
         organization_ref=EntityRef(handle="/osf", type="organization"),
@@ -240,7 +272,7 @@ def migrate_authproviders(db: Database, dry_run: bool):
     authprovider = AuthProviderDAO(
         created_by=infostar,
         external_ids=[
-            Attribute(name="issuer", value="https://osf.eu.auth0.com"),
+            Attribute(name="issuer", value="https://osfdigital.eu.auth0.com"),
             Attribute(name="audience", value="???"),
         ],
         extra={},

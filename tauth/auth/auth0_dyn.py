@@ -194,7 +194,7 @@ class RequestAuthenticator:
             extra={},
             service_handle=authprovider.service_ref.handle,  # TODO: azp
             user_handle=user_data["user_email"],
-            user_owner_handle=user.owner_ref.handle,  # type: ignore
+            user_owner_handle=user_data["org_id"],  # TODO map this to an org
             client_ip=ip,
             original=None,
         )

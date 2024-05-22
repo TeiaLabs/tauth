@@ -1,5 +1,3 @@
-from redbaby.document import Document
-
 from ..schemas import Infostar
 
 

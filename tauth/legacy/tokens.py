@@ -13,15 +13,16 @@ from ..entities.models import EntityDAO
 from ..schemas import Creator, Infostar
 from ..settings import Settings
 from ..utils import creation, reading
+from .schemas import MeltAPIKeyIn
 
-router = APIRouter(prefix="/clients", tags=["legacy"])
+router = APIRouter(prefix="/keys", tags=["legacy"])
 
 
-@router.post("/{client_name:path}/tokens", status_code=s.HTTP_201_CREATED)
+@router.post("", status_code=s.HTTP_201_CREATED)
+@router.post("/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def create_one(
     request: Request,
-    client_name: str = Path(),
-    name: str = Body(..., embed=True),
+    body: MeltAPIKeyIn,
     infostar: Infostar = Depends(privileges.is_valid_user),
 ) -> TokenCreationOut:
     """
@@ -30,8 +31,7 @@ async def create_one(
     Clients can create tokens for themselves and their subclients, but not for parent clients.
     """
     creator: Creator = request.state.creator
-    logger.debug(f"Attempting to CREATE token {name!r} for {client_name!r}.")
-    creator: Creator = request.state.creator
+    logger.debug(f"Attempting to CREATE token {body.name!r} for {body.organization_handle!r}.")
     try:
         org_handle = client_name.split("/")[1]
         organization = f"/{org_handle}"
