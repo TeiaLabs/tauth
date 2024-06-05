@@ -2,8 +2,7 @@ name: osf-prod-deploy
 
 on:
   push:
-    branches: ["v2"]
-    tags: ["v*.*.*"]
+    tags: ["v2.*.*"]
   workflow_dispatch:
 
 env:
