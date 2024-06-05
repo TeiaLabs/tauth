@@ -2,7 +2,7 @@ name: osf-dev-deploy
 
 on:
   push:
-    branches: [master, osf-prod-deploy]
+    branches: [v2]
     paths:
       - "tauth/**"
       - ".github/**"
