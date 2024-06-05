@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11 as base
+FROM python:3.12 as base
 
 RUN mkdir -p -m 0600 /root/.ssh && \
     ssh-keyscan -H github.com >> /root/.ssh/known_hosts
