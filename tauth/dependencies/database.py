@@ -11,4 +11,5 @@ def init_app(sets: Settings):
         alias=Settings.get().TAUTH_REDBABY_ALIAS,
     )
     for m in Document.__subclasses__():
-        m.create_indexes(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+        if m.__module__.startswith("tauth"):
+            m.create_indexes(alias=Settings.get().TAUTH_REDBABY_ALIAS)

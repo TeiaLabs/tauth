@@ -3,6 +3,7 @@ from importlib.metadata import version
 from fastapi import APIRouter, FastAPI
 
 from . import dependencies
+from .auth.routes import router as authentication_router
 from .authproviders import router as authproviders_router
 from .entities import router as entities_router
 from .legacy import client, tokens
@@ -24,16 +25,15 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     router = APIRouter(prefix="/api")
-    router.include_router(get_router(None))
+    router.include_router(get_router())
     app.include_router(router)
 
     return app
 
 
-def get_router(prefix: str | None) -> APIRouter:
-    if prefix is None:
-        prefix = __name__.split(".")[-2]
-    base_router = APIRouter(prefix=f"/{prefix}")
+def get_router() -> APIRouter:
+    base_router = APIRouter()
+    base_router.include_router(authentication_router)
     base_router.include_router(entities_router)
     base_router.include_router(authproviders_router)
     base_router.include_router(client.router)
