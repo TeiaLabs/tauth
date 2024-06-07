@@ -18,8 +18,9 @@
     - Rule-based Access Control (RBAC)
   - Policy as Code (PaC)
     - Languages
-      - Open Policy Agent (OPA) - Rego (https://www.openpolicyagent.org/)
+      - Open Policy Agent (OPA) - Rego (https://www.openpolicyagent.org/, https://www.openpolicyagent.org/docs/latest/policy-language/)
       - Amazon - Cedar (https://www.cedarpolicy.com/en)
+      - OpenFPGA (https://openfga.dev/)
       - Oso - Polar (https://www.osohq.com/, https://www.osohq.com/docs/reference/polar)
     - Sub-policies (use policies inside other policies)
   - Policy store (per service, stores rules/"authorization logic")
