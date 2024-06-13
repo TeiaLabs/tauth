@@ -2,6 +2,7 @@ from pydantic import EmailStr
 from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
 from redbaby.document import Document
+from redbaby.behaviors.reading import ReadingMixin
 
 from ..schemas import Creator
 
@@ -24,7 +25,7 @@ class UserDAO(Document, HashIdMixin):
         return [self.client_name, self.email]
 
 
-class TokenDAO(Document, HashIdMixin):
+class TokenDAO(Document, HashIdMixin, ReadingMixin):
     client_name: str
     created_by: Creator
     name: str
