@@ -22,4 +22,4 @@ class Infostar(BaseModel):
     user_handle: EmailStr  # email
     user_owner_handle: str  # e.g., organization, user family, ...
     client_ip: str
-    original: Optional["Infostar"]  # if any attributes were overriden
+    original: Optional["Infostar"] = None  # if any attributes were overriden
