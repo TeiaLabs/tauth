@@ -10,10 +10,10 @@ from authlib.jose.errors import (
 )
 from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
 from cachetools.func import ttl_cache
-from fastapi.security.http import HTTPBase, HTTPAuthorizationCredentials
-from fastapi import Depends, FastAPI, Request, Security, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Security
+from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from httpx import Client, HTTPError
-from pydantic import BaseSettings, root_validator
+from pydantic_settings import BaseSettings
 
 from ..schemas import Creator
 
@@ -23,16 +23,17 @@ log = getLogger(__name__)
 class Auth0Settings(BaseSettings):
     AUTH0_DOMAIN: str = ""
     AUTH0_AUDIENCE: str = ""
+    ENABLE_AUTH0: bool = False
 
     def validate(self):
-        for k, v in self.__fields__.items():
-            if k.startswith("AUTH0") and not getattr(self, k):
-                raise ValueError(f"Variable {k} cannot be empty.")
+        if self.ENABLE_AUTH0:
+            for k, v in self.model_fields.items():
+                if k.startswith("AUTH0") and not getattr(self, k):
+                    raise ValueError(f"Variable {k} cannot be empty.")
         return True
-
-    class Config:
-        env_file = ".env"
-
+    model_config = {
+        "extra": "ignore"
+    }
 
 class JSONKeyStore:
     domain: str = Auth0Settings().AUTH0_DOMAIN
@@ -139,7 +140,11 @@ class RequestAuthenticator:
             )
         user_email = id_claims.get("email")
         if not user_email:
-            d = {"loc": ["headers", "X-ID-Token"], "msg": "Missing 'email' claim.", "type": "MissingRequiredClaim"}
+            d = {
+                "loc": ["headers", "X-ID-Token"],
+                "msg": "Missing 'email' claim.",
+                "type": "MissingRequiredClaim",
+            }
             raise HTTPException(401, detail=d)
         request.state.creator = Creator(
             client_name="/osf/wingman",

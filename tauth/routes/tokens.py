@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Body, HTTPException, Path, Request
 from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
-from redb.interface.errors import DocumentNotFound
 
 from ..controllers import client as client_controller
 from ..controllers import tokens as token_controller
@@ -24,11 +23,11 @@ async def create_one(
     creator: Creator = request.state.creator
     try:
         client_controller.read_one(name=client_name)
-    except DocumentNotFound as e:
+    except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "client_name"],
             msg="Cannot create token for non-existent client.",
-            type=e.__class__.__name__,
+            type="DocumentNotFound",
         )
         raise HTTPException(status_code=s.HTTP_404_NOT_FOUND, detail=details)
     clean_client_name = sanitize_client_name(client_name, loc=["path", "client_name"])
@@ -58,11 +57,11 @@ async def delete_one(
     creator: Creator = request.state.creator
     try:
         client_controller.read_one(name=client_name)
-    except DocumentNotFound as e:
+    except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "client_name"],
             msg="Cannot delete token for non-existent client.",
-            type=e.__class__.__name__,
+            type="DocumentNotFound",
         )
         raise HTTPException(status_code=s.HTTP_404_NOT_FOUND, detail=details)
     clean_client_name = sanitize_client_name(client_name, loc=["path", "client_name"])
@@ -75,4 +74,6 @@ async def delete_one(
         )
         raise HTTPException(status_code=s.HTTP_403_FORBIDDEN, detail=details)
     # TODO: needs soft delete.
-    TokenDAO.delete_one(filter=dict(client_name=client_name, name=token_name))
+    TokenDAO.collection().delete_one(
+        filter=dict(client_name=client_name, name=token_name)
+    )

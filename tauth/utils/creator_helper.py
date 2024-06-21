@@ -4,8 +4,8 @@ from typing import Optional
 
 from fastapi import HTTPException
 from fastapi import status as s
-from pydantic import EmailStr, validate_email
-from redb.interface.errors import DocumentNotFound, UniqueConstraintViolation
+from pydantic import validate_email
+from pymongo.errors import DuplicateKeyError
 
 from ..models import TokenDAO, UserDAO
 from ..schemas import Creator
@@ -13,19 +13,25 @@ from ..settings import Settings
 from .access_helper import sanitize_client_name
 from .token_helper import parse_token
 
+EmailStr = str
+
 
 @lru_cache(maxsize=32)
 def validate_token_against_db(token: str, client_name: str, token_name: str):
     filters = {"client_name": client_name, "name": token_name}
+    entity = TokenDAO.find(
+        filter=filters, validate=True,alias=Settings.get().TAUTH_REDBABY_ALIAS
+    )
     try:
-        entity = TokenDAO.switch_db(Settings.get().TAUTH_MONGODB_DBNAME).find_one(filter=filters)
-    except DocumentNotFound as e:
+        entity = list(entity)[0]
+    except IndexError:
         d = {
-            "filters": filters,
-            "msg": f"Token does not exist for client.",
-            "type": type(e).__name__,
-        }
+        "filters": filters,
+        "msg": f"Token does not exist for client.",
+        "type": "DocumentNotFound",
+    }
         raise HTTPException(status_code=s.HTTP_401_UNAUTHORIZED, detail=d)
+    
     if not secrets.compare_digest(token, entity.value):
         code, m = s.HTTP_401_UNAUTHORIZED, "Token does not match."
         raise HTTPException(status_code=code, detail={"msg": m})
@@ -46,8 +52,11 @@ def create_user_on_db(creator: Creator, token_creator_email: Optional[EmailStr])
                 user_email=user_creator_email,
             ),
         )
-        UserDAO.switch_db(Settings.get().TAUTH_MONGODB_DBNAME).insert_one(user)
-    except UniqueConstraintViolation:
+        print(user.bson())
+        UserDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(
+            user.bson()
+        )
+    except DuplicateKeyError:
         pass
 
 
