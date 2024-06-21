@@ -1,8 +1,8 @@
 from pydantic import EmailStr
 from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
-from redbaby.document import Document
 from redbaby.behaviors.reading import ReadingMixin
+from redbaby.document import Document
 
 from ..schemas import Creator
 
