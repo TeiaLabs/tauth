@@ -6,13 +6,14 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from .constants import DEFAULT_ROTATION_LENGTH, DEFAULT_ROTATION_TTL
 from .errors import InvalidToken
-from .keygen import generate_signing_pair
-from .tokcoder import Claims, decode_jwt, encode_jwt
+from .keygen import JWKS, generate_jwks, generate_signing_pair
+from .tokcoder import Claims, decode_jwt, encode_jwt, unverified_headers
 
 
 class KeyPair(TypedDict):
     private: rsa.RSAPrivateKey
     public: rsa.RSAPublicKey
+    jwks: JWKS
     ttl: float
 
 
@@ -21,6 +22,7 @@ def init_key_pair() -> KeyPair:
     return {
         "private": private,
         "public": public,
+        "jwks": generate_jwks(public),
         "ttl": time.time(),
     }
 
@@ -53,6 +55,7 @@ class CredentialStore:
         cls._current = {
             "private": private,
             "public": public,
+            "jwks": generate_jwks(public),
             "ttl": time.time(),
         }
         return cls._current
@@ -70,6 +73,10 @@ class CredentialStore:
         return cls._current["private"]
 
     @classmethod
+    def jwks(cls) -> JWKS:
+        return cls._current["jwks"]
+
+    @classmethod
     def alive(cls):
         return cls._current["ttl"] + DEFAULT_ROTATION_TTL < time.time()
 
@@ -84,7 +91,10 @@ class CredentialStore:
         return encode_jwt(payload=payload, private_key=cls.private())
 
     @classmethod
-    def decode(cls, token: bytes, claims: Claims) -> dict[str, Any]:
+    def decode(cls, token: str | bytes, claims: Claims) -> dict[str, Any]:
+        if isinstance(token, str):
+            token = token.encode("utf-8")
+
         e = "Invalid token."
         for rotation in cls.rotations():
             try:
@@ -98,3 +108,10 @@ class CredentialStore:
                 e = str(err)
 
         raise InvalidToken(e)
+
+    @classmethod
+    def headers(cls, token: str | bytes) -> dict[str, Any]:
+        if isinstance(token, str):
+            token = token.encode("utf-8")
+
+        return unverified_headers(token=token)

@@ -1,7 +1,8 @@
 from typing import Any, Callable, Generic, TypedDict, TypeVar
 
-from authlib.jose import JWTClaims, jwt
-from authlib.jose.errors import BadSignatureError, InvalidClaimError
+from authlib.common.encoding import to_bytes
+from authlib.jose import JWTClaims, jwt, util
+from authlib.jose.errors import BadSignatureError, DecodeError, InvalidClaimError
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from .errors import InvalidToken
@@ -60,3 +61,14 @@ def decode_jwt(
         raise InvalidToken("Invalid token claims.")
 
     return c["payload"]
+
+
+def unverified_headers(token: bytes):
+    try:
+        signing_input, _ = token.rsplit(b".", 1)
+        protected_segment, _ = signing_input.split(b".", 1)
+    except ValueError:
+        raise DecodeError("Not enough segments")
+
+    protected = util.extract_header(protected_segment, DecodeError)
+    return protected

@@ -1,10 +1,34 @@
 from pathlib import Path
+from typing import TypedDict
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from jwcrypto import jwk
 
 from .constants import DEFAULT_PATH
+
+
+class JWK(TypedDict, total=False):
+    alg: str
+    use: str
+    kty: str
+    n: str
+    e: str
+    kid: str
+
+
+class JWKS(TypedDict):
+    keys: list[JWK]
+
+
+def generate_jwks(public_key: rsa.RSAPublicKey) -> JWKS:
+    # Convert the public key PEM to a JWK object
+    jwk_public_key = jwk.JWK.from_pem(public_key_bytes(public_key))
+    dict_jwk: dict[str, str] = jwk_public_key.export(as_dict=True)  # type: ignore
+
+    public_jwk = JWKS(keys=[JWK(alg="RS256", use="sig", **dict_jwk)])
+    return public_jwk
 
 
 def generate_signing_pair(
