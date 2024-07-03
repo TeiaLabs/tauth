@@ -13,7 +13,7 @@ class TokenDAO(Document, Authoring, ReadingMixin, HashIdMixin):
 
     @classmethod
     def collection_name(cls) -> str:
-        return "melt_keys"
+        return "melt-keys"
 
     @classmethod
     def indexes(cls) -> list[IndexModel]:

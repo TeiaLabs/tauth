@@ -3,10 +3,10 @@ from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
 
-from ..auth.melt_key.authorization import validate_scope_access_level
-from ..auth.melt_key.models import TokenDAO
-from ..auth.melt_key.schemas import TokenCreationIntermediate, TokenCreationOut
-from ..auth.melt_key.token import create_token
+from ..authn.melt_key.authorization import validate_scope_access_level
+from ..authn.melt_key.models import TokenDAO
+from ..authn.melt_key.schemas import TokenCreationIntermediate, TokenCreationOut
+from ..authn.melt_key.token import create_token
 from ..authproviders.models import AuthProviderDAO
 from ..authz import privileges
 from ..entities.models import EntityDAO
@@ -31,7 +31,9 @@ async def create_one(
     Clients can create tokens for themselves and their subclients, but not for parent clients.
     """
     creator: Creator = request.state.creator
-    logger.debug(f"Attempting to CREATE token {body.name!r} for {body.organization_handle!r}.")
+    logger.debug(
+        f"Attempting to CREATE token {body.name!r} for {body.organization_handle!r}."
+    )
     try:
         org_handle = client_name.split("/")[1]
         organization = f"/{org_handle}"

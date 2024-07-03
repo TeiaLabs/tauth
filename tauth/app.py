@@ -3,8 +3,9 @@ from importlib.metadata import version
 from fastapi import APIRouter, FastAPI
 
 from . import dependencies
-from .auth.routes import router as authentication_router
+from .authn.routes import router as authentication_router
 from .authproviders import router as authproviders_router
+from .authz.routes import router as authorization_router
 from .entities import router as entities_router
 from .legacy import client, tokens
 from .settings import Settings
@@ -20,11 +21,11 @@ def create_app() -> FastAPI:
     dependencies.init_app(app, settings)
 
     # Routes
-    @app.get("/", status_code=200, tags=["health"])
+    @app.get("/", status_code=200, tags=["health 🩺"])
     def _():
         return {"status": "ok"}
 
-    router = APIRouter(prefix="/api")
+    router = APIRouter()
     router.include_router(get_router())
     app.include_router(router)
 
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
 def get_router() -> APIRouter:
     base_router = APIRouter()
     base_router.include_router(authentication_router)
+    base_router.include_router(authorization_router)
     base_router.include_router(entities_router)
     base_router.include_router(authproviders_router)
     base_router.include_router(client.router)

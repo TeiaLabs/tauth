@@ -5,12 +5,12 @@ from fastapi import status as s
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
 
-from ..auth.melt_key.authorization import (
+from ..authn.melt_key.authorization import (
     validate_creation_access_level,
     validate_scope_access_level,
 )
-from ..auth.melt_key.models import TokenDAO
-from ..auth.melt_key.schemas import (
+from ..authn.melt_key.models import TokenDAO
+from ..authn.melt_key.schemas import (
     ClientCreation,
     ClientCreationOut,
     ClientOut,
@@ -20,7 +20,7 @@ from ..auth.melt_key.schemas import (
     TokenMeta,
     UserOut,
 )
-from ..auth.melt_key.token import create_token
+from ..authn.melt_key.token import create_token
 from ..authproviders.models import AuthProviderDAO
 from ..authz import privileges
 from ..entities.models import EntityDAO

@@ -5,8 +5,8 @@ from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
 
-from ..auth import auth0_dyn
-from ..auth.melt_key import authentication as melt_key
+from ..authn import auth0_dyn
+from ..authn.melt_key import authentication as melt_key
 
 
 def init_app(app: FastAPI):

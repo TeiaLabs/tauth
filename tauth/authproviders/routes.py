@@ -4,7 +4,7 @@ from typing import Optional, cast
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi import status as s
 
-from ..auth.melt_key.authorization import validate_creation_access_level
+from ..authn.melt_key.authorization import validate_creation_access_level
 from ..authz import privileges
 from ..entities.models import EntityDAO, OrganizationRef, ServiceRef
 from ..schemas import Infostar
