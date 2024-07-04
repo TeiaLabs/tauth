@@ -5,6 +5,7 @@ from fastapi import APIRouter, FastAPI
 from . import dependencies
 from .authn.routes import router as authentication_router
 from .authproviders import router as authproviders_router
+from .authz.policies.routes import router as policy_router
 from .authz.routes import router as authorization_router
 from .entities import router as entities_router
 from .legacy import client, tokens
@@ -36,6 +37,7 @@ def get_router() -> APIRouter:
     base_router = APIRouter()
     base_router.include_router(authentication_router)
     base_router.include_router(authorization_router)
+    base_router.include_router(policy_router)
     base_router.include_router(entities_router)
     base_router.include_router(authproviders_router)
     base_router.include_router(client.router)

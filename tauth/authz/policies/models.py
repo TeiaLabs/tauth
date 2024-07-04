@@ -5,7 +5,7 @@ from redbaby.behaviors.objectids import ObjectIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
-from ..utils.teia_behaviors import Authoring
+from ...utils.teia_behaviors import Authoring
 
 
 class AuthorizationPolicyDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):

@@ -10,6 +10,6 @@ class AuthorizationPolicyIn(BaseModel):
 
 
 class AuthorizationDataIn(BaseModel):
-    # resource: str
+    resource: str
     policy_name: str
     context: dict
