@@ -12,7 +12,6 @@ from ..utils.teia_behaviors import Authoring
 
 class EntityRefBase(BaseModel):
     handle: str
-    id: str
 
 
 class EntityRef(EntityRefBase):
@@ -20,15 +19,15 @@ class EntityRef(EntityRefBase):
 
 
 class OrganizationRef(EntityRefBase):
-    type: Literal["organization"]
+    type: Literal["organization"] = "organization"
 
 
 class ServiceRef(EntityRefBase):
-    type: Literal["service"]
+    type: Literal["service"] = "service"
 
 
 class UserRef(EntityRefBase):
-    type: Literal["user"]
+    type: Literal["user"] = "user"
 
 
 class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):

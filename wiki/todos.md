@@ -31,9 +31,9 @@ extra_value = [2, 4]
 1. docs
 2. infostar vs creator
 3. tauth migration scripts
-4. integration meltingface
-5. override headers for infostar fields
-6. integration memetrics
-7. deploy to AWS
+   1. tauth legacy organizations -> entities
+4. deploy to AWS
+5. integration meltingface
+6. override headers for infostar fields
+7. integration memetrics
 8. tests
-9. tauth legacy organizations (?)

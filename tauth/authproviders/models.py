@@ -15,9 +15,11 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     external_ids: list[Attribute] = Field(
         default_factory=list
     )  # dynamic provider selection: issuer, audience
-    extra: list[Attribute]  # url, client_id, client_secret
+    extra: list[Attribute] = Field(
+        default_factory=list
+    )  # url, client_id, client_secret
     organization_ref: OrganizationRef
-    service_ref: Optional[ServiceRef]
+    service_ref: Optional[ServiceRef]  # TODO: AZP claim
     type: Literal["auth0", "melt-key", "tauth-key"]
 
     @classmethod
@@ -27,7 +29,10 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     @classmethod
     def indexes(cls) -> list[IndexModel]:
         idxs = [
-            IndexModel([("organization_ref.handle", 1), ("type", 1)], unique=True),
+            IndexModel(
+                [("organization_ref.handle", 1), ("type", 1), ("service_ref", 1)],
+                unique=True,
+            ),
             IndexModel([("external_ids.name", 1), ("external_ids.value", 1)]),
         ]
         return idxs
