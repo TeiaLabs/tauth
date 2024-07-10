@@ -7,7 +7,7 @@ from ...schemas import Creator, Infostar
 
 class TokenMeta(BaseModel):
     created_at: datetime
-    created_by: Creator
+    created_by: Infostar
     name: str
 
 

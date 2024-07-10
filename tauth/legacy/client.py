@@ -48,8 +48,8 @@ async def create_one(
     creator: Creator = request.state.creator
     logger.debug(f"Creating a new client: {client_in.name!r}.")
     logger.debug(f"Validating access: {creator.client_name!r} -> {client_in.name!r}.")
+    # TODO: move this to rego
     validate_creation_access_level(client_in.name, creator.client_name)
-
     try:
         org_handle = client_in.name.split("/")[1]
         organization = f"/{org_handle}"

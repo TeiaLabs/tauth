@@ -32,13 +32,13 @@ async def create_one(
     """
     creator: Creator = request.state.creator
     logger.debug(
-        f"Attempting to CREATE token {body.name!r} for {body.organization_handle!r}."
+        f"Attempting to create token {body.name!r} for {body.organization_handle!r}."
     )
     try:
-        org_handle = client_name.split("/")[1]
-        organization = f"/{org_handle}"
-        logger.debug(f"Checking if organization entity {organization!r} exists.")
-        filters = {"handle": organization, "type": "organization"}
+        logger.debug(
+            f"Checking if organization entity {body.organization_handle!r} exists."
+        )
+        filters = {"handle": body.organization_handle, "type": "organization"}
         org = reading.read_one_filters(infostar, model=EntityDAO, **filters)
     except HTTPException as e:
         details = RequestValidationError(
@@ -60,25 +60,27 @@ async def create_one(
         )
         raise HTTPException(status_code=s.HTTP_404_NOT_FOUND, detail=details)
 
-    logger.debug(f"Validating access: {creator.client_name!r} -> {client_name!r}.")
-    validate_scope_access_level(client_name, creator.client_name)
+    logger.debug(
+        f"Validating access: {infostar.authprovider_org!r} -> {body.organization_handle!r}."
+    )
+    validate_scope_access_level(body.organization_handle, infostar.authprovider_org)
 
     try:
-        logger.debug(f"Creating {name!r} token.")
+        logger.debug(f"Creating {body.name!r} token.")
         token = TokenCreationIntermediate(
-            client_name=client_name,
-            name=name,
-            value=create_token(client_name, name),
+            client_name=creator.client_name,
+            name=body.name,
+            value=create_token(creator.client_name, body.name),
         )
         token = creation.create_one(token, model=TokenDAO, infostar=infostar)
         token_out = TokenCreationOut(
             **token.model_dump(exclude={"created_by"}),
-            created_by=creator,
+            created_by=infostar,
         )
     except HTTPException as e:
         details = RequestValidationError(
             loc=["path", "name"],
-            msg=f"Token {name!r} already exists.",
+            msg=f"Token {body.name!r} already exists.",
             type="DuplicateKeyError",
         )
         raise HTTPException(status_code=s.HTTP_409_CONFLICT, detail=details)
