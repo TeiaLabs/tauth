@@ -4,7 +4,7 @@ from .opa import OPAEngine
 
 
 class AuthorizationEngine:
-    _instance: AuthorizationInterface = None
+    _instance: AuthorizationInterface | None = None
 
     @classmethod
     def get(cls) -> AuthorizationInterface:

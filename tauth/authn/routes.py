@@ -12,9 +12,6 @@ router = APIRouter(prefix=f"/{service_name}", tags=[service_name + " 🪪"])
 
 @router.post("", status_code=s.HTTP_200_OK)
 @router.post("/", status_code=s.HTTP_200_OK, include_in_schema=False)
-async def authenticate(
-    request: Request,
-    _=Depends(RequestAuthenticator.validate),
-) -> Infostar:
+async def authenticate(request: Request) -> Infostar:
     infostar: Infostar = request.state.infostar
     return infostar

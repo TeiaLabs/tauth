@@ -164,9 +164,9 @@ class RequestAuthenticator:
             logger.debug("Using non-root token, validating token in DB.")
             token_obj = validate_token_against_db(token, client_name, token_name)
             if user_email is None:
-                request_creator_user_email = token_obj["created_by"]["user_email"]
+                request_creator_user_email = token_obj["created_by"]["user_handle"]
             else:
-                token_creator_user_email = token_obj["created_by"]["user_email"]
+                token_creator_user_email = token_obj["created_by"]["user_handle"]
                 try:
                     validate_email(user_email)
                 except:

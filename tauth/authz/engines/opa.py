@@ -1,6 +1,8 @@
+from typing import Optional
+
 from loguru import logger
 from opa_client import OpaClient
-from opa_client.errors import ConnectionsError, RegoParseError
+from opa_client.errors import ConnectionsError, DeletePolicyError, RegoParseError
 
 from ...entities.models import EntityDAO
 from ...settings import Settings
@@ -23,37 +25,62 @@ class OPAEngine(AuthorizationInterface):
         self,
         entity: EntityDAO,
         policy_name: str,
-        context: dict,
+        resource: str,
+        context: Optional[dict] = None,
     ) -> bool:
-        opa_context = {"input": context}
-        result = self.client.check_permission(
+        opa_context = dict(input={})
+        entity_json = entity.model_dump(mode="json")
+        opa_context["input"]["entity"] = entity_json
+        if context:
+            opa_context["input"] |= context
+        opa_result = self.client.check_permission(
             input_data=opa_context,
             policy_name=policy_name,
-            rule_name="is_valid_superuser",
+            rule_name=resource,
         )
+        logger.debug(f"Raw OPA result: {opa_result}")
+        opa_result = opa_result["result"]
+        return opa_result
 
     def get_filters(
         self,
         entity: EntityDAO,
         policy_name: str,
-        context: dict,
+        resource: str,
+        context: Optional[dict] = None,
     ) -> dict:
-        raise NotImplementedError
+        opa_context = dict(input=dict(context=context, entity=entity))
+        opa_result = self.client.check_permission(
+            input_data=opa_context,
+            policy_name=policy_name,
+            rule_name=resource,
+        )
+        logger.debug(f"Raw OPA result: {opa_result}")
+        return opa_result
 
-    def upsert_policy(
-        self,
-        policy_data: AuthorizationPolicyDAO,
-    ):
-        logger.debug(f"Upserting policy: {policy_data.name}.")
+    def upsert_policy(self, policy_name: str, policy_content: str) -> bool:
+        logger.debug(f"Upserting policy {policy_name!r} in OPA.")
         try:
-            self.client.update_opa_policy_fromstring(
-                policy_data.policy,
-                policy_data.name,
+            result = self.client.update_opa_policy_fromstring(
+                policy_content,
+                policy_name,
             )
         except RegoParseError as e:
             logger.error(f"Failed to upsert policy in OPA: {e}")
             raise e
 
-    def delete_policy(self, policy_name: str):
+        if not result:
+            logger.error(f"Failed to upsert policy in OPA: {result}")
+        return result
+
+    def delete_policy(self, policy_name: str) -> bool:
         logger.debug(f"Deleting policy: {policy_name}.")
-        raise NotImplementedError
+        try:
+            result = self.client.delete_opa_policy(policy_name)
+        except DeletePolicyError as e:
+            logger.error(f"Failed to delete policy in OPA: {e}")
+            raise e
+
+        if not result:
+            logger.error(f"Failed to upsert policy in OPA: {result}")
+        return result

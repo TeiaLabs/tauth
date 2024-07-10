@@ -1,15 +1,17 @@
 from pathlib import Path
-from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Request
 from fastapi import status as s
+from loguru import logger
 
 from ...authz import privileges
 from ...schemas import Infostar
 from ...schemas.gen_fields import GeneratedFields
-from ...utils import creation, reading
+from ...utils import reading
 from ..policies.models import AuthorizationPolicyDAO
 from ..policies.schemas import AuthorizationPolicyIn
+from . import controllers as authz_controller
+from .schemas import POLICY_EXAMPLES
 
 service_name = Path(__file__).parents[1].name
 router = APIRouter(prefix=f"/{service_name}", tags=[service_name + " 🔐"])
@@ -22,11 +24,11 @@ router = APIRouter(prefix=f"/{service_name}", tags=[service_name + " 🔐"])
 @router.post("/policies/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def create_one(
     request: Request,
-    body: AuthorizationPolicyIn = Body(),
+    body: AuthorizationPolicyIn = Body(openapi_examples=POLICY_EXAMPLES),
     infostar: Infostar = Depends(privileges.is_valid_admin),
-):
-    policy = creation.create_one(body, AuthorizationPolicyDAO, infostar)
-    return GeneratedFields(**policy.model_dump(by_alias=True))
+) -> GeneratedFields:
+    result = authz_controller.create_one(body, infostar)
+    return result
 
 
 @router.get("/policies", status_code=s.HTTP_200_OK)
@@ -34,11 +36,7 @@ async def create_one(
 async def read_many(
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
-    name: Optional[str] = Query(None),
-):
-    policy = reading.read_many(
-        infostar=infostar,
-        model=AuthorizationPolicyDAO,
-        **request.query_params,
-    )
-    return policy
+) -> list[AuthorizationPolicyDAO]:
+    filters: dict = {k: v for k, v in request.query_params.items() if v is not None}
+    result = authz_controller.read_many(filters, infostar)
+    return result
