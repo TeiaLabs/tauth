@@ -9,6 +9,7 @@ from ...utils.teia_behaviors import Authoring
 
 
 class AuthorizationPolicyDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
+    description: str
     name: str
     policy: str
     type: Literal["opa"]
@@ -24,3 +25,6 @@ class AuthorizationPolicyDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
             IndexModel([("type", 1)]),
         ]
         return idxs
+
+    def hashable_fields(self) -> list[str]:
+        return [self.name, self.type]

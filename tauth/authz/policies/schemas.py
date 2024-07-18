@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 
 class AuthorizationPolicyIn(BaseModel):
+    description: str
     name: str
     policy: str
     type: Literal["opa"]
@@ -24,6 +25,7 @@ POLICY_EXAMPLES = {
         value=dict(
             type="opa",
             name="melt-key",
+            description="MELT API Key privilege levels.",
             policy="""
 package tauth.melt_key
 
