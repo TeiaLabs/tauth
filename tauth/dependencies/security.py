@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
+from fastapi import FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
@@ -10,7 +10,9 @@ from ..authn.melt_key import authentication as melt_key
 
 
 def init_app(app: FastAPI):
-    app.router.dependencies.append(Depends(RequestAuthenticator.validate))
+    from tauth.utils.fastapi_extension import get_depends
+
+    app.router.dependencies.append(get_depends())
 
 
 class RequestAuthenticator:
