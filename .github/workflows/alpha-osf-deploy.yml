@@ -20,7 +20,7 @@ env:
 
 jobs:
   build:
-    name: Deploy dev image
+    name: Deploy alpha image
     runs-on: ubuntu-latest
 
     steps:
@@ -53,6 +53,7 @@ jobs:
           file: ./Dockerfile
           push: true
           target: run
+          ssh: default
           tags: "${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
       - name: Force deployment to ECS
