@@ -1,6 +1,11 @@
-name: osf-dev-deploy
+name: osf-alpha-deploy
 
 on:
+  push:
+    branches: [master, v2]
+    paths:
+      - "tauth/**"
+      - ".github/**"
   workflow_dispatch:
 
 env:
@@ -8,10 +13,10 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.OSF_AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: us-east-1
 
-  ECS_CLUSTER: allai-staging-services
-  ECS_SERVICE: tauth-beta
-  REPOSITORY: 147431826892.dkr.ecr.us-east-1.amazonaws.com/tauth-beta
-  IMAGE_TAG: beta
+  ECS_CLUSTER: allai-alpha-services
+  ECS_SERVICE: tauth-alpha
+  REPOSITORY: 147431826892.dkr.ecr.us-east-1.amazonaws.com/tauth-alpha
+  IMAGE_TAG: alpha
 
 jobs:
   build:

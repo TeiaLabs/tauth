@@ -11,7 +11,7 @@ RUN apt-get update && apt-get -y upgrade && \
 WORKDIR /app
 RUN pip install --upgrade pip
 COPY . .
-RUN pip install .
+RUN --mount=type=ssh pip install .[teia]
 
 # Install OPA
 RUN wget https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O opa
