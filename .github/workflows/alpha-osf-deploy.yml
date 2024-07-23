@@ -39,6 +39,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set SSH agent
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          log-public-key: true
+          ssh-private-key: |
+            ${{ secrets.TEIA_AUTOMATION_SSH }}
+
       - name: Build and push to ECR
         uses: docker/build-push-action@v4
         with:
