@@ -19,7 +19,7 @@ profile = "black"
 line_length = 88
 
 [project]
-name = "athena_api"
+name = "tauth"
 authors = [{ name = "TeiaLabs", email = "contato@teialabs.com" }]
 description = "TeiaLabs Athena API"
 readme = "README.md"
