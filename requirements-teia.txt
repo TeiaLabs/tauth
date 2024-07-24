@@ -1,5 +1,0 @@
-cacheia_schemas @ git+ssh://git@github.com/TeiaLabs/cacheia.git@6f7231be92a44776209e9a6d042a777080d30af8#subdirectory=schemas
-cacheia @ git+ssh://git@github.com/TeiaLabs/cacheia.git@6f7231be92a44776209e9a6d042a777080d30af8#subdirectory=core
-cacheia_client @ git+ssh://git@github.com/TeiaLabs/cacheia.git@6f7231be92a44776209e9a6d042a777080d30af8#subdirectory=client
-cacheia_decorators @ git+ssh://git@github.com/TeiaLabs/cacheia.git@6f7231be92a44776209e9a6d042a777080d30af8#subdirectory=decorators
-cacheia_api @ git+ssh://git@github.com/TeiaLabs/cacheia.git@6f7231be92a44776209e9a6d042a777080d30af8#subdirectory=api

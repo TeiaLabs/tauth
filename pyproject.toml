@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=60", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tauth"]
+namespaces = false
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "no-local-version"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[project]
+name = "athena_api"
+authors = [{ name = "TeiaLabs", email = "contato@teialabs.com" }]
+description = "TeiaLabs Athena API"
+readme = "README.md"
+requires-python = ">=3.12"
+dynamic = ["version"]
+dependencies = [
+    "cachetools",
+    "cryptography",
+    "fastapi[all]",
+    "http_error_schemas>=0.1.0",
+    "httpx",
+    "loguru",
+    "multiformats",
+    "pydantic[dotenv,email]",
+    "PyJWT",
+    "pymongo",
+    "python-dotenv",
+    "python-multipart",
+    "opa-python-client",
+    "redbaby==1.0.3",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "pytest-order", "pytest_mock"]
+first_party = [
+    "cacheia_schemas==1.0.0.post3",
+    "cacheia_decorators==1.0.0.post3",
+    "cacheia_client==1.0.0.post3",
+    "cacheia_api==1.0.0.post3",
+    "cacheia==1.0.0.post3",
+]
+docs = [
+    "mkdocs",
+    "mkdocstrings[python]",
+    "mkdocs-gen-files",
+    "mkdocs-literate-nav",
+    "mkdocs-material",
+    "mkdocs-section-index",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--cov=athena", "--cov-report=html"]
+
+[tool.coverage.run]
+source = ["athena"]
+omit = ["__main__.py", "__init__.py"]
