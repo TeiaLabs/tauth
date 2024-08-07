@@ -1,10 +1,9 @@
 from pathlib import Path
 from typing import Optional, cast
 
-from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi import status as s
 
-from ..authn.melt_key.authorization import validate_creation_access_level
 from ..authz import privileges
 from ..entities.models import EntityDAO, OrganizationRef, ServiceRef
 from ..schemas import Infostar
@@ -28,6 +27,11 @@ async def create_one(
 ):
     if body.service_name:
         service_ref = EntityDAO.from_handle_to_ref(body.service_name)
+        if not service_ref:
+            raise HTTPException(
+                status_code=s.HTTP_404_NOT_FOUND,
+                detail=f"Provided service name {body.service_name!r} not found.",
+            )
         service_ref = cast(ServiceRef, service_ref)
         service_ref = ServiceRef(**service_ref.model_dump())
     else:

@@ -24,7 +24,7 @@ def get_infostar(
             s = status.HTTP_403_FORBIDDEN
             d = {  # TODO: use http_error_schemas
                 "msg": "You do not have access to this resource.",
-                "info": {"infostar": infostar.model_dump()},
+                "info": {"infostar": infostar.model_dump(mode="json")},
             }
             # TODO: delegate exception raising to the wrapped function
             raise HTTPException(status_code=s, detail=d)
