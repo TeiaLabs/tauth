@@ -85,7 +85,7 @@ class RequestAuthenticator:
                 "$elemMatch": {"name": "audience", "value": aud[0]}
             }
 
-        provider = reading.read_one(infostar={}, model=AuthProviderDAO, **filters)  # type: ignore
+        provider = reading.read_one_filters(infostar={}, model=AuthProviderDAO, **filters)  # type: ignore
         return provider
 
     @staticmethod
