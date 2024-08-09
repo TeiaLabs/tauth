@@ -1,17 +1,13 @@
 from logging import getLogger
 
 from authlib.jose import jwt
-from authlib.jose.errors import (
-    ExpiredTokenError,
-    InvalidClaimError,
-    InvalidTokenError,
-    MissingClaimError,
-)
+from authlib.jose.errors import (ExpiredTokenError, InvalidClaimError,
+                                 InvalidTokenError, MissingClaimError)
 from authlib.jose.rfc7517.jwk import JsonWebKey, KeySet
 from cachetools.func import ttl_cache
 from fastapi import HTTPException, Request
 from httpx import Client, HTTPError
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 from ..organizations import controllers as org_controllers
 from ..schemas import Creator
@@ -29,8 +25,9 @@ class Auth0Settings(BaseSettings):
     def validate(self):
         return True
 
-    class Config:
-        env_file = ".env"
+    model_config = {
+        "extra": "ignore"
+    }
 
 
 class ManyJSONKeyStore:

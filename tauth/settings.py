@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -16,14 +16,14 @@ class Settings(BaseSettings):
     # mongodb
     TAUTH_MONGODB_DBNAME: str = "tauth"
     TAUTH_MONGODB_URI: str = "mongodb://localhost:27017/"
+    TAUTH_REDBABY_ALIAS: str = "tauth"
 
     # Auth providers
     ENABLE_AUTH0: bool = False
     ENABLE_AUTH2: bool = False
     ENABLE_AZURE: bool = False
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(extra="ignore", env_file=".env")
 
     @classmethod
     @lru_cache(maxsize=1)
