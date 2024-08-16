@@ -39,7 +39,7 @@ dependencies = [
     "python-dotenv",
     "python-multipart",
     "opa-python-client",
-    "redbaby==1.0.3",
+    "redbaby==1.0.4",
     "uvicorn",
 ]
 
