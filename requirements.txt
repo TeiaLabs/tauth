@@ -5,6 +5,7 @@ http_error_schemas>=0.1.0
 httpx
 multiformats
 pydantic[dotenv,email]>=1.10,<2
+pyjwt
 python-dotenv
 python-multipart
 redb-odm>=1.3.4

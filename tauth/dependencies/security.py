@@ -1,11 +1,12 @@
 from logging import getLogger
 from typing import Iterable
 
+import jwt
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 
-from ..auth import auth0, auth0_dyn, azure_jwt, teia_api_key
+from ..auth import auth0, auth0_dyn, azure_jwt, okta, teia_api_key
 from ..settings import Settings
 
 log = getLogger("tauth")
@@ -62,15 +63,26 @@ class RequestAuthenticator:
             teia_api_key.RequestAuthenticator.validate(request, user_email, token_value)
             return
 
-        if Settings.get().ENABLE_AUTH0 and id_token is not None:
-            log.debug("Authenticating with Auth0.")
-            auth0.RequestAuthenticator.validate(request, token_value, id_token)
-            return
+        if id_token is not None:
+            # Check which provider to use by inspecting the issuer claim
+            unverified_claims = jwt.decode(id_token, options={"verify_signature": False})
+            issuer = unverified_claims['iss']
+            print(f"Issuer: {issuer}")
+            if "auth0" in issuer:
+                if Settings.get().ENABLE_AUTH0:
+                    log.debug("Authenticating with Auth0.")
+                    auth0.RequestAuthenticator.validate(request, token_value, id_token)
+                    return
 
-        if Settings.get().ENABLE_AUTH2 and id_token is not None:
-            log.debug("Authenticating with Auth2.")
-            auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
-            return
+                if Settings.get().ENABLE_AUTH2:
+                    log.debug("Authenticating with Auth2.")
+                    auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
+                    return
+            elif "okta" in issuer:
+                if Settings.get().ENABLE_OKTA:
+                    log.debug("Authenticating with Okta.")
+                    okta.RequestAuthenticator.validate(request, token_value, id_token)
+                    return
 
         if Settings.get().ENABLE_AZURE:
             log.debug("Authenticating with an Azure JWT.")

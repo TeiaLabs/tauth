@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     ENABLE_AUTH0: bool = False
     ENABLE_AUTH2: bool = False
     ENABLE_AZURE: bool = False
+    ENABLE_OKTA: bool = False
 
     class Config:
         env_file = ".env"
