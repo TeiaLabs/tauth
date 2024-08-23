@@ -1,12 +1,13 @@
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi import status as s
 
 from ..authz import privileges
 from ..schemas import Infostar
 from ..schemas.gen_fields import GeneratedFields
+from ..settings import Settings
 from ..utils import creation, reading
 from .models import EntityDAO
 from .schemas import EntityIn, EntityIntermediate
@@ -31,6 +32,24 @@ async def create_one(
     schema_in = EntityIntermediate(owner_ref=owner_ref, **body.model_dump())
     entity = creation.create_one(schema_in, EntityDAO, infostar)
     return GeneratedFields(**entity.model_dump(by_alias=True))
+
+
+@router.post("/{entity_id}", status_code=s.HTTP_200_OK)
+@router.post("/{entitiy_id}/", status_code=s.HTTP_200_OK, include_in_schema=False)
+async def read_one(
+    entity_id: str,
+    infostar: Infostar = Depends(privileges.is_valid_user),
+) -> EntityDAO:
+    entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    entity = entity_coll.find_one({"_id": entity_id})
+    if not entity:
+        d = {
+            "error": "DocumentNotFound",
+            "msg": f"Entity with ID={entity_id} not found.",
+        }
+        raise HTTPException(status_code=404, detail=d)
+    entity = EntityDAO.model_validate(entity)
+    return entity
 
 
 @router.get("", status_code=s.HTTP_200_OK)

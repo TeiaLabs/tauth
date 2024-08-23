@@ -37,9 +37,7 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     extra: list[Attribute] = Field(default_factory=list)
     handle: str
     owner_ref: Optional[EntityRef]
-    roles: list[str] = Field(
-        default_factory=list
-    )  # e.g.: ["teia-admin", "allai-user-basic"]
+    roles: list[str] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]
 
     @classmethod
