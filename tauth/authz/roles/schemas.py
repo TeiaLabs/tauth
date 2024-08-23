@@ -2,35 +2,32 @@ from typing import Optional
 
 from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
+from redbaby.pyobjectid import PyObjectId
 
-from ..entities.models import EntityRef
-from .utils import UniqueOrderedList
+from ...entities.models import EntityRef
 
 
 class RoleIn(BaseModel):
     name: str
     description: str
     entity_handle: str
-    permissions: Optional[UniqueOrderedList] = Field(default_factory=list)
+    permissions: Optional[list[str]] = Field(default_factory=list)
 
     @staticmethod
-    def get_rolein_examples():
+    def get_role_examples():
         examples = {
-            "Simple role": Example(
-                description=(
-                    "Simple role declaration with one permission (role name). "
-                    "Use this if you want to create a role with a single permission."
-                ),
+            "Role stub": Example(
+                description="Simple role with no initial permissions (stub declaration).",
                 value=RoleIn(
                     name="api-admin",
                     description="API Administrator",
                     entity_handle="/teialabs",
                 ),
             ),
-            "Role with multiple permissions": Example(
+            "Role with permissions": Example(
                 description=(
-                    "Role declaration with multiple permissions. "
-                    "Use this if you want to create a role with multiple permissions."
+                    "Role declaration with initial permissions. "
+                    "The permissions must be created beforehand."
                 ),
                 value=RoleIn(
                     name="api-admin",
@@ -47,7 +44,7 @@ class RoleUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     entity_handle: Optional[str] = None
-    permissions: Optional[UniqueOrderedList] = None
+    permissions: Optional[list[str]] = None
 
 
     @staticmethod
@@ -76,4 +73,11 @@ class RoleIntermediate(BaseModel):
     name: str
     description: str
     entity_ref: EntityRef
+    permissions: list[PyObjectId]
+
+
+class RoleOut(BaseModel):
+    name: str
+    description: str
+    entity_handle: str
     permissions: list[str]

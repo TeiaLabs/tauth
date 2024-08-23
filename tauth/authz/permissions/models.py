@@ -1,22 +1,20 @@
-from pydantic import Field
 from pymongo import IndexModel
 from redbaby.behaviors.objectids import ObjectIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
-from ..entities.models import EntityRef
-from ..utils.teia_behaviors import Authoring
+from ...entities.models import EntityRef
+from ...utils.teia_behaviors import Authoring
 
 
-class RoleDAO(Document, ObjectIdMixin, Authoring, ReadingMixin):
+class PermissionDAO(Document, ObjectIdMixin, Authoring, ReadingMixin):
     name: str
     description: str
     entity_ref: EntityRef
-    permissions: list[str] = Field(default_factory=list)
 
     @classmethod
     def collection_name(cls) -> str:
-        return "roles"
+        return "authz-permissions"
 
     @classmethod
     def indexes(cls) -> list[IndexModel]:

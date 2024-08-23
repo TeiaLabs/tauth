@@ -8,31 +8,54 @@ from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
 
-from ..authz import privileges
-from ..entities.models import EntityDAO
-from ..schemas import Infostar
-from ..schemas.gen_fields import GeneratedFields
-from ..settings import Settings
-from ..utils import creation, reading
+from ...authz import privileges
+from ...entities.models import EntityDAO
+from ...schemas import Infostar
+from ...schemas.gen_fields import GeneratedFields
+from ...settings import Settings
+from ...utils import creation, reading
+from ..permissions.models import PermissionDAO
 from .models import RoleDAO
-from .schemas import RoleIn, RoleIntermediate, RoleUpdate
+from .schemas import RoleIn, RoleIntermediate, RoleOut, RoleUpdate
 
-service_name = Path(__file__).parent.name
-router = APIRouter(prefix=f"/{service_name}", tags=[service_name + " 🏷"])
+service_name = Path(__file__).parents[1].name
+router = APIRouter(prefix=f"/{service_name}/roles", tags=[service_name + " 🔐"])
+
+# TODO: Add routes to get all users that have specific:
+# - Permissions
+# - Roles
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)
 @router.post("/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def create_one(
     request: Request,
-    role_in: RoleIn = Body(openapi_examples=RoleIn.get_rolein_examples()),
+    role_in: RoleIn = Body(openapi_examples=RoleIn.get_role_examples()),
     infostar: Infostar = Depends(privileges.is_valid_admin),
-):
+) -> GeneratedFields:
     logger.debug(f"Creating role: {role_in}")
     logger.debug(f"Fetching entity ref from handle: {role_in.entity_handle!r}")
     entity_ref = EntityDAO.from_handle_to_ref(role_in.entity_handle)
     if not entity_ref:
         raise HTTPException(s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle")
+
+    permission_ids = []
+    if role_in.permissions:
+        logger.debug("Validating permissions for role creation.")
+        permissions_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+        permission_list = permissions_coll.find({"name": {"$in": role_in.permissions}})
+        permission_list = list(permission_list)
+        if len(role_in.permissions) != len(permission_list):
+            logger.error(f"Invalid permissions for role creation: {role_in.permissions!r} - {permission_list!r}.")
+            raise HTTPException(
+                status_code=s.HTTP_400_BAD_REQUEST,
+                detail="Invalid permissions provided.",
+            )
+        permission_names = [p["name"] for p in permission_list]
+        permission_ids = [p["_id"] for p in permission_list]
+        logger.debug(f"Permissions: {list(zip(permission_names, permission_ids))}.")
+
+    role_in.permissions = permission_ids
     schema_in = RoleIntermediate(entity_ref=entity_ref, **role_in.model_dump())
     role = creation.create_one(schema_in, RoleDAO, infostar=infostar)
     return GeneratedFields(**role.model_dump(by_alias=True))
@@ -44,14 +67,25 @@ async def read_one(
     role_id: PyObjectId,
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
-) -> RoleDAO:
+) -> RoleOut:
     logger.debug(f"Reading role {role_id!r}.")
     role = reading.read_one(
         infostar=infostar,
         model=RoleDAO,
         identifier=role_id,
     )
-    return role
+    permission_names = []
+    if role.permissions:
+        permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+        permission_list = permission_coll.find({"_id": {"$in": role.permissions}})
+        permission_names = sorted([p["name"] for p in permission_list])
+    role.permissions = permission_names
+    role_out = RoleOut(
+        **role.model_dump(by_alias=True, exclude={"permissions", "entity_ref"}),
+        permissions=permission_names,
+        entity_handle=role.entity_ref.handle,
+    )
+    return role_out
 
 
 @router.get("", status_code=s.HTTP_200_OK)
@@ -61,7 +95,7 @@ async def read_many(
     infostar: Infostar = Depends(privileges.is_valid_user),
     name: Optional[str] = Query(None),
     entity_handle: Optional[str] = Query(None),
-):
+) -> list[RoleOut]:
     logger.debug(f"Reading roles with filters: {request.query_params}")
     # Decode the URL-encoded query parameters
     decoded_query_params = {
@@ -77,7 +111,23 @@ async def read_many(
         model=RoleDAO,
         **decoded_query_params,
     )
-    return roles
+
+    # Decode permissions and entity handle
+    roles_out = []
+    for role in roles:
+        permission_names = []
+        if role.permissions:
+            permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+            permission_list = permission_coll.find({"_id": {"$in": role.permissions}})
+            permission_names = sorted([p["name"] for p in permission_list])
+        role.permissions = permission_names
+        role_out = RoleOut(
+            **role.model_dump(by_alias=True, exclude={"permissions", "entity_ref"}),
+            permissions=permission_names,
+            entity_handle=role.entity_ref.handle,
+        )
+        roles_out.append(role_out)
+    return roles_out
 
 
 @router.patch("/{role_id}", status_code=s.HTTP_204_NO_CONTENT)
@@ -104,7 +154,8 @@ async def update(
             raise HTTPException(s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle")
         role.entity_ref = entity_ref
     if role_update.permissions:
-        role.permissions = role_update.permissions
+        permissions = [PyObjectId(p) for p in role_update.permissions]
+        role.permissions = permissions
 
     role.updated_at = datetime.now(UTC)
 
