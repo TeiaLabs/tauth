@@ -78,11 +78,21 @@ class RequestAuthenticator:
                     log.debug("Authenticating with Auth2.")
                     auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
                     return
+
+                raise HTTPException(
+                    status_code=401,
+                    detail={"msg": "Received Auth0 token but no Auth0 auth method is enabled."},
+                )
             elif "okta" in issuer:
                 if Settings.get().ENABLE_OKTA:
                     log.debug("Authenticating with Okta.")
                     okta.RequestAuthenticator.validate(request, token_value, id_token)
                     return
+
+                raise HTTPException(
+                    status_code=401,
+                    detail={"msg": "Received Okta token but Okta auth method is not enabled."},
+                )
 
         if Settings.get().ENABLE_AZURE:
             log.debug("Authenticating with an Azure JWT.")
