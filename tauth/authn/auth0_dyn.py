@@ -200,11 +200,15 @@ class RequestAuthenticator:
         )
 
         try:
-            user = reading.read_one_filters(
+            filters = {
+                "type": "user", 
+                "handle": user_data["user_email"], 
+                "owner_ref.handle": authprovider.organization_ref.handle,
+            }
+            reading.read_one_filters(
                 infostar=infostar,
                 model=EntityDAO,
-                handle=user_data["user_email"],
-                type="user",
+                **filters
             )
         except HTTPException as e:
             if e.status_code in (404, 409):
@@ -213,7 +217,7 @@ class RequestAuthenticator:
                     owner_ref=authprovider.organization_ref.model_dump(),  # type: ignore
                     type="user",
                 )
-                user = creation.create_one(user_i, EntityDAO, infostar=infostar)
+                creation.create_one(user_i, EntityDAO, infostar=infostar)
             else:
                 raise e
 
