@@ -83,7 +83,7 @@ class RequestAuthenticator:
                     token_value,
                     j_w_k,
                     claims_options=RequestAuthenticator.get_access_claims(
-                        domain, "https://psgequity.okta.com"
+                        domain, f"https://{domain}"
                     ),
                 )
                 access_claims.validate()
@@ -166,14 +166,13 @@ class RequestAuthenticator:
                     "type": "MissingRequiredClaim",
                 }
                 raise HTTPException(401, detail=d)
-            # TODO: Not sure how to treat this org_id part. Okta doesn't use that (?)
-            # so I hard-coded the `external_ids` in the organization document.
-            org_id = "string"
-            org = org_controllers.read_one("/psg--okta-org-id", org_id)
-            # org_id = access_claims.get("org_id")
-            # if not org_id:
-            #     raise HTTPException(401, detail="Missing 'org_id' claim.")
-            # org = org_controllers.read_one({"$regex": r"/.*--okta-org-id"}, org_id)  # type: ignore
+            # TODO: Okta deals with organizations using separate domains.
+            # So I used the domain name in the `external_ids` field.
+            org_id = domain
+            org = org_controllers.read_one(
+                external_id_key={"$regex": r"/.*--okta-org-id"},  # type: ignore
+                external_id_value=org_id,
+            )
             if not org:
                 raise HTTPException(
                     401, detail=f"Organization with id '{org_id}' not found."
