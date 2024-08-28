@@ -3,7 +3,7 @@ from typing import Any, Optional, Self
 import jwt as pyjwt
 from cachetools.func import ttl_cache
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from fastapi import HTTPException, Request
+from fastapi import BackgroundTasks, HTTPException, Request
 from httpx import Client, HTTPError
 from jwt import (
     InvalidSignatureError,
@@ -58,7 +58,7 @@ class Auth0Settings(BaseModel):
 
 class ManyJSONKeySetStore:
     @classmethod
-    @ttl_cache(maxsize=16, ttl=60 * 60 * 6)
+    @ttl_cache(maxsize=32, ttl=60 * 60 * 6)
     def get_jwks(cls, domain: str) -> PyJWKSet:
         logger.debug(f"Fetching JWKS from {domain}.")
         with Client() as client:
@@ -73,6 +73,8 @@ class ManyJSONKeySetStore:
 
 
 class RequestAuthenticator:
+    CACHE: dict[str, tuple[Infostar, str, dict]] = {}
+
     @staticmethod
     def get_authprovider(token_value: str) -> AuthProviderDAO:
         logger.debug("Getting AuthProvider.")
@@ -85,7 +87,9 @@ class RequestAuthenticator:
                 "$elemMatch": {"name": "audience", "value": aud[0]}
             }
 
-        provider = reading.read_one_filters(infostar={}, model=AuthProviderDAO, **filters)  # type: ignore
+        provider = reading.read_one_filters(
+            infostar={}, model=AuthProviderDAO, **filters
+        )  # type: ignore
         return provider
 
     @staticmethod
@@ -199,52 +203,71 @@ class RequestAuthenticator:
             original=None,
         )
 
-        try:
-            filters = {
-                "type": "user", 
-                "handle": user_data["user_email"], 
-                "owner_ref.handle": authprovider.organization_ref.handle,
-            }
-            reading.read_one_filters(
-                infostar=infostar,
-                model=EntityDAO,
-                **filters
-            )
-        except HTTPException as e:
-            if e.status_code in (404, 409):
-                user_i = EntityIntermediate(
-                    handle=user_data["user_email"],
-                    owner_ref=authprovider.organization_ref.model_dump(),  # type: ignore
-                    type="user",
-                )
-                creation.create_one(user_i, EntityDAO, infostar=infostar)
-            else:
-                raise e
-
         return infostar
 
     @classmethod
-    def validate(cls, request: Request, token_value: str, id_token: str):
-        try:
-            header = get_token_headers(token_value)
-            authprovider = cls.get_authprovider(token_value)
-            access_claims = cls.validate_access_token(token_value, header, authprovider)
-            id_claims = cls.validate_id_token(id_token, header, authprovider)
-        except (
-            MissingRequiredClaimError,
-            InvalidTokenError,
-            InvalidSignatureError,
-            HTTPError,
-        ) as e:
-            raise HTTPException(
-                401,
-                detail={
-                    "loc": ["headers", "Authorization"],
-                    "msg": f"{e.__class__.__name__}: {e}",
-                    "type": e.__class__.__name__,
-                },
-            )
+    def validate(
+        cls,
+        request: Request,
+        token_value: str,
+        id_token: str,
+        background_tasks: BackgroundTasks,
+    ):
+        key = f"token_value={token_value}&id_token={id_token}"
+        cached_value = cls.CACHE.get(key)
+        if cached_value:
+            infostar, user_email, auth_provider_org_ref = cached_value
+        else:
+            try:
+                header = get_token_headers(token_value)
 
-        user_data = cls.assemble_user_data(access_claims, id_claims)
-        request.state.infostar = cls.assemble_infostar(request, user_data, authprovider)
-        request.state.creator = cls.assemble_creator(request.state.infostar)
+                authprovider = cls.get_authprovider(token_value)
+                access_claims = cls.validate_access_token(
+                    token_value, header, authprovider
+                )
+                id_claims = cls.validate_id_token(id_token, header, authprovider)
+            except (
+                MissingRequiredClaimError,
+                InvalidTokenError,
+                InvalidSignatureError,
+                HTTPError,
+            ) as e:
+                raise HTTPException(
+                    401,
+                    detail={
+                        "loc": ["headers", "Authorization"],
+                        "msg": f"{e.__class__.__name__}: {e}",
+                        "type": e.__class__.__name__,
+                    },
+                )
+
+            user_data = cls.assemble_user_data(access_claims, id_claims)
+            infostar = cls.assemble_infostar(request, user_data, authprovider)
+            user_email = user_data["user_email"]
+            auth_provider_org_ref = authprovider.organization_ref.model_dump()
+
+            cls.CACHE[key] = (infostar, user_email, auth_provider_org_ref)
+
+        request.state.infostar = infostar
+        request.state.creator = cls.assemble_creator(infostar)
+
+        def callback():
+            try:
+                filters = {
+                    "type": "user",
+                    "handle": user_email,
+                    "owner_ref.handle": auth_provider_org_ref["handle"],
+                }
+                reading.read_one_filters(infostar=infostar, model=EntityDAO, **filters)
+            except HTTPException as e:
+                if e.status_code in (404, 409):
+                    user_i = EntityIntermediate(
+                        handle=user_email,
+                        owner_ref=auth_provider_org_ref,  # type: ignore
+                        type="user",
+                    )
+                    creation.create_one(user_i, EntityDAO, infostar=infostar)
+                else:
+                    logger.error(e)
+
+        background_tasks.add_task(callback)

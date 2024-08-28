@@ -66,7 +66,12 @@ class RequestAuthenticator:
         else:
             logger.debug("Authenticating with an Auth0 provider.")
             # figure out which provider/iss it's from
-            auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
+            auth0_dyn.RequestAuthenticator.validate(
+                request=request,
+                token_value=token_value,
+                id_token=id_token,
+                background_tasks=background_tasks,
+            )
             return
 
         # TODO: check if it starts with TAUTH_
