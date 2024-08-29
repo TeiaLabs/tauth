@@ -21,6 +21,7 @@ from ..entities.models import EntityDAO
 from ..entities.schemas import EntityIntermediate
 from ..schemas import Creator, Infostar
 from ..utils import creation, reading
+from .utils import TimedCache
 
 
 def get_token_headers(token: str) -> dict[str, Any]:
@@ -73,7 +74,10 @@ class ManyJSONKeySetStore:
 
 
 class RequestAuthenticator:
-    CACHE: dict[str, tuple[Infostar, str, dict]] = {}
+    CACHE: TimedCache[str, tuple[Infostar, str, dict]] = TimedCache(
+        max_size=4096,
+        ttl=60 * 60 * 1,  # 1h
+    )
 
     @staticmethod
     def get_authprovider(token_value: str) -> AuthProviderDAO:
