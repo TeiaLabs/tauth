@@ -14,13 +14,14 @@ from ...entities.models import EntityDAO, EntityRef, OrganizationRef
 from ...schemas import Creator, Infostar
 from ...schemas.attribute import Attribute
 from ...settings import Settings
+from ..utils import SizedCache
 from .token import parse_token, sanitize_client_name, validate_token_against_db
 
 EmailStr = str
 
 
 class RequestAuthenticator:
-    CACHE: dict[str, tuple[Creator, Infostar]] = {}
+    CACHE: SizedCache[str, tuple[Creator, Infostar]] = SizedCache(max_size=512)
 
     @classmethod
     def validate(
