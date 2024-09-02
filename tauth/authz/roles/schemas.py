@@ -4,7 +4,12 @@ from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
 from redbaby.pyobjectid import PyObjectId
 
-from ...entities.models import EntityRef
+from ...entities.schemas import EntityRef
+
+
+class RoleRef(BaseModel):
+    id: PyObjectId
+    entity: EntityRef
 
 
 class RoleIn(BaseModel):
@@ -46,7 +51,6 @@ class RoleUpdate(BaseModel):
     entity_handle: Optional[str] = None
     permissions: Optional[list[str]] = None
 
-
     @staticmethod
     def get_roleupdate_examples():
         examples = {
@@ -77,6 +81,7 @@ class RoleIntermediate(BaseModel):
 
 
 class RoleOut(BaseModel):
+    id: PyObjectId = Field(alias="_id")
     name: str
     description: str
     entity_handle: str

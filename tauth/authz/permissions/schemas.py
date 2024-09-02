@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi.openapi.models import Example
 from pydantic import BaseModel
 
-from ...entities.models import EntityRef
+from ...entities.schemas import EntityRef
 
 
 class PermissionIn(BaseModel):

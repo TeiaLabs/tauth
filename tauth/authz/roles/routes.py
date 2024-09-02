@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
@@ -43,7 +44,10 @@ async def create_one(
     if role_in.permissions:
         logger.debug("Validating permissions for role creation.")
         permissions_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
-        permission_list = permissions_coll.find({"name": {"$in": role_in.permissions}})
+        permission_list = permissions_coll.find({
+            "name": {"$in": role_in.permissions},
+            "entity_ref.handle": role_in.entity_handle,
+        })
         permission_list = list(permission_list)
         if len(role_in.permissions) != len(permission_list):
             logger.error(f"Invalid permissions for role creation: {role_in.permissions!r} - {permission_list!r}.")
@@ -102,10 +106,16 @@ async def read_many(
         key: unquote(value) if isinstance(value, str) else value
         for key, value in request.query_params.items()
     }
-    entity_handle_param = decoded_query_params.pop("entity_handle", None)
-    if entity_handle_param:
-        decoded_query_params["entity_ref.handle"] = entity_handle_param
+    if name:
+        decoded_query_params["name"] = {  # type: ignore
+            "$regex": re.escape(name),
+            "$options": "i",
+        }
+    if entity_handle:
+        handle = decoded_query_params.pop("entity_handle")
+        decoded_query_params["entity_ref.handle"] = handle
     logger.debug(f"Decoded query params: {decoded_query_params}")
+
     roles = reading.read_many(
         infostar=infostar,
         model=RoleDAO,

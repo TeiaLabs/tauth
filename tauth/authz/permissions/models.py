@@ -3,7 +3,7 @@ from redbaby.behaviors.objectids import ObjectIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
-from ...entities.models import EntityRef
+from ...entities.schemas import EntityRef
 from ...utils.teia_behaviors import Authoring
 
 

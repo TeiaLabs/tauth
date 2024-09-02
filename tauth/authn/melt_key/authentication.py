@@ -9,8 +9,8 @@ from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
 from ...authproviders.schemas import AuthProviderMoreIn
-from ...entities.models import EntityDAO, EntityRef, OrganizationRef
-from ...entities.schemas import EntityIntermediate
+from ...entities.models import EntityDAO
+from ...entities.schemas import EntityIntermediate, EntityRef, OrganizationRef
 from ...schemas import Creator, Infostar
 from ...schemas.attribute import Attribute
 from ...settings import Settings

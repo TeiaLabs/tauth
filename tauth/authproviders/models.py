@@ -6,7 +6,7 @@ from redbaby.behaviors.objectids import ObjectIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
-from ..entities.models import OrganizationRef, ServiceRef
+from ..entities.schemas import OrganizationRef, ServiceRef
 from ..schemas.attribute import Attribute
 from ..utils.teia_behaviors import Authoring
 

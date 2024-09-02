@@ -1,3 +1,4 @@
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
@@ -38,8 +39,8 @@ async def create_one(
     return GeneratedFields(**role.model_dump(by_alias=True))
 
 
-@router.get("/{role_id}", status_code=s.HTTP_200_OK)
-@router.get("/{role_id}/", status_code=s.HTTP_200_OK, include_in_schema=False)
+@router.get("/{permission_id}", status_code=s.HTTP_200_OK)
+@router.get("/{permission_id}/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_one(
     permission_id: PyObjectId,
     infostar: Infostar = Depends(privileges.is_valid_user),
@@ -67,9 +68,14 @@ async def read_many(
         key: unquote(value) if isinstance(value, str) else value
         for key, value in request.query_params.items()
     }
-    entity_handle_param = decoded_query_params.pop("entity_handle", None)
-    if entity_handle_param:
-        decoded_query_params["entity_ref.handle"] = entity_handle_param
+    if name:
+        decoded_query_params["name"] = {  # type: ignore
+            "$regex": re.escape(name),
+            "$options": "i",
+        }
+    if entity_handle:
+        handle = decoded_query_params.pop("entity_handle")
+        decoded_query_params["entity_ref.handle"] = handle
     logger.debug(f"Decoded query params: {decoded_query_params}")
     roles = reading.read_many(
         infostar=infostar,
@@ -79,8 +85,8 @@ async def read_many(
     return roles
 
 
-@router.patch("/{role_id}", status_code=s.HTTP_204_NO_CONTENT)
-@router.patch("/{role_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False)
+@router.patch("/{permission_id}", status_code=s.HTTP_204_NO_CONTENT)
+@router.patch("/{permission_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False)
 async def update(
     permission_id: PyObjectId,
     permission_update: PermissionUpdate = Body(openapi_examples=PermissionUpdate.get_permission_update_examples()),
@@ -111,8 +117,8 @@ async def update(
         {"$set": permission.model_dump()},
     )
 
-@router.delete("/{role_id}", status_code=s.HTTP_204_NO_CONTENT)
-@router.delete("/{role_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False)
+@router.delete("/{permission_id}", status_code=s.HTTP_204_NO_CONTENT)
+@router.delete("/{permission_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False)
 async def delete(
     permission_id: PyObjectId,
     infostar: Infostar = Depends(privileges.is_valid_admin),

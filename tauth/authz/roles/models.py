@@ -5,7 +5,7 @@ from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 from redbaby.pyobjectid import PyObjectId
 
-from ...entities.models import EntityRef
+from ...entities.schemas import EntityRef
 from ...utils.teia_behaviors import Authoring
 
 
