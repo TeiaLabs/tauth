@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from redbaby.pyobjectid import PyObjectId
 
 from ...entities.schemas import EntityRef
+from ..permissions.schemas import PermissionOut
 
 
 class RoleRef(BaseModel):
@@ -85,4 +86,4 @@ class RoleOut(BaseModel):
     name: str
     description: str
     entity_handle: str
-    permissions: list[str]
+    permissions: list[PermissionOut]

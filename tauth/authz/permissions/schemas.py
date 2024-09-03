@@ -34,6 +34,12 @@ class PermissionIn(BaseModel):
         return examples
 
 
+class PermissionOut(BaseModel):
+    name: str
+    description: str
+    entity_ref: EntityRef
+
+
 class PermissionUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None

@@ -16,15 +16,12 @@ from ...schemas.gen_fields import GeneratedFields
 from ...settings import Settings
 from ...utils import creation, reading
 from ..permissions.models import PermissionDAO
+from ..permissions.schemas import PermissionOut
 from .models import RoleDAO
 from .schemas import RoleIn, RoleIntermediate, RoleOut, RoleUpdate
 
 service_name = Path(__file__).parents[1].name
 router = APIRouter(prefix=f"/{service_name}/roles", tags=[service_name + " 🔐"])
-
-# TODO: Add routes to get all users that have specific:
-# - Permissions
-# - Roles
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)
@@ -78,15 +75,17 @@ async def read_one(
         model=RoleDAO,
         identifier=role_id,
     )
-    permission_names = []
+
+    # Decode permissions and entity handle
+    permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    permissions = []
     if role.permissions:
-        permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
         permission_list = permission_coll.find({"_id": {"$in": role.permissions}})
-        permission_names = sorted([p["name"] for p in permission_list])
-    role.permissions = permission_names
+        permissions = [PermissionOut(**p) for p in permission_list]
+        permissions = sorted(permissions, key=lambda p: p.name)
     role_out = RoleOut(
         **role.model_dump(by_alias=True, exclude={"permissions", "entity_ref"}),
-        permissions=permission_names,
+        permissions=permissions,
         entity_handle=role.entity_ref.handle,
     )
     return role_out
@@ -121,19 +120,20 @@ async def read_many(
         model=RoleDAO,
         **decoded_query_params,
     )
+    logger.debug(f"Roles: {roles}")
 
     # Decode permissions and entity handle
     roles_out = []
+    permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
     for role in roles:
-        permission_names = []
+        permissions = []
         if role.permissions:
-            permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
             permission_list = permission_coll.find({"_id": {"$in": role.permissions}})
-            permission_names = sorted([p["name"] for p in permission_list])
-        role.permissions = permission_names
+            permissions = [PermissionOut(**p) for p in permission_list]
+            permissions = sorted(permissions, key=lambda p: p.name)
         role_out = RoleOut(
             **role.model_dump(by_alias=True, exclude={"permissions", "entity_ref"}),
-            permissions=permission_names,
+            permissions=permissions,
             entity_handle=role.entity_ref.handle,
         )
         roles_out.append(role_out)
@@ -181,6 +181,22 @@ async def delete(
     role_id: PyObjectId,
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
+    logger.debug(f"Checking if entities are using role with ID: {role_id!r}.")
+    entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    entity_count = entity_coll.count_documents({"roles.id": role_id})
+    logger.debug(f"Role {role_id!r} used by {entity_count} entities.")
+    if entity_count:
+        raise HTTPException(
+            s.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete role that is in use by entities (used by {entity_count}).",
+        )
+
     logger.debug(f"Deleting role with ID: {role_id!r}.")
     role_coll = RoleDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
-    role_coll.delete_one({"_id": role_id})
+    res = role_coll.delete_one({"_id": role_id})
+    if res.deleted_count != 1:
+        raise HTTPException(
+            s.HTTP_404_NOT_FOUND,
+            detail=f"Role with ID {role_id!r} not found.",
+        )
+    logger.debug(f"Delete result: {res}")
