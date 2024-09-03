@@ -111,7 +111,7 @@ async def update(
 
     permission.updated_at = datetime.now(UTC)
 
-    role_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    role_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     role_coll.update_one(
         {"_id": permission.id},
         {"$set": permission.model_dump()},
@@ -139,5 +139,5 @@ async def delete(
             detail=f"Cannot delete permission {str(permission_id)!r} because it is used by role(s): {role_names}.",
         )
 
-    role_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    role_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     role_coll.delete_one({"_id": permission_id})

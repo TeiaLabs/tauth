@@ -7,7 +7,7 @@ services:
       target: run
     env_file: .env
     ports:
-      - ${PORT}:${PORT}
+      - ${TAUTH_PORT}:${TAUTH_PORT}
       - ${CACHEIA_PORT}:${CACHEIA_PORT}
     develop:
       watch:

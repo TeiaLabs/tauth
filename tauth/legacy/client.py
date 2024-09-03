@@ -117,7 +117,7 @@ async def create_one(
 
     logger.debug(f"Adding new subclient to authprovider.")
     authprovider_collection = AuthProviderDAO.collection(
-        alias=Settings.get().TAUTH_REDBABY_ALIAS
+        alias=Settings.get().REDBABY_ALIAS
     )
     authprovider_collection.update_one(
         filter={"_id": provider.id},

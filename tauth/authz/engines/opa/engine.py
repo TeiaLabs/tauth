@@ -4,14 +4,14 @@ from loguru import logger
 from opa_client import OpaClient
 from opa_client.errors import ConnectionsError, DeletePolicyError, RegoParseError
 
-from ...entities.models import EntityDAO
-from ...settings import Settings
-from ..policies.models import AuthorizationPolicyDAO
-from .interface import AuthorizationInterface
+from ....entities.models import EntityDAO
+from ..interface import AuthorizationInterface
+from .settings import OPASettings
 
 
 class OPAEngine(AuthorizationInterface):
-    def __init__(self):
+    def __init__(self, settings: OPASettings):
+        self.settings = settings
         logger.debug("Attempting to establish connection with OPA Engine.")
         self.client = OpaClient()
         try:

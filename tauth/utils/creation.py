@@ -14,7 +14,7 @@ T = TypeVar("T", bound=Document)
 def create_one(item_in: BaseModel, model: Type[T], infostar: Infostar) -> T:
     item = model(**item_in.model_dump(), created_by=infostar)  # type: ignore
     try:
-        res = model.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).insert_one(
+        res = model.collection(alias=Settings.get().REDBABY_ALIAS).insert_one(
             item.bson()
         )
     except pymongo_errors.DuplicateKeyError as e:

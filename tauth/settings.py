@@ -1,6 +1,11 @@
 from functools import lru_cache
+from typing import Literal
 
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from .authz.engines.opa.settings import OPASettings
+from .authz.engines.remote.settings import RemoteSettings
 
 
 class Settings(BaseSettings):
@@ -11,14 +16,29 @@ class Settings(BaseSettings):
     WORKERS: int = 1
 
     # Database
-    TAUTH_MONGODB_DBNAME: str = "tauth"
-    TAUTH_MONGODB_URI: str = "mongodb://localhost:27017/"
-    TAUTH_REDBABY_ALIAS: str = "tauth"
+    MONGODB_DBNAME: str = "tauth"
+    MONGODB_URI: str = "mongodb://localhost:27017/"
+    REDBABY_ALIAS: str = "tauth"
 
     # Security
-    TAUTH_ROOT_API_KEY: str = "MELT_/--default--1"
+    ROOT_API_KEY: str = "MELT_/--default--1"
+    AUTHZ_ENGINE: Literal["opa", "remote"] = "opa"
 
-    model_config = SettingsConfigDict(extra="ignore", env_file=".env")
+    @computed_field
+    @property
+    def AUTHZ_ENGINE_SETTINGS(self) -> OPASettings | RemoteSettings:
+        if self.AUTHZ_ENGINE == "opa":
+            return OPASettings()
+        elif self.AUTHZ_ENGINE == "remote":
+            return RemoteSettings()  # type: ignore
+        else:
+            raise ValueError("Invalid AUTHZ_ENGINE_SETTINGS value")
+
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        env_file=".env",
+        env_prefix="TAUTH_",
+    )
 
     @classmethod
     @lru_cache(maxsize=1)

@@ -40,7 +40,7 @@ async def create_one(
     permission_ids = []
     if role_in.permissions:
         logger.debug("Validating permissions for role creation.")
-        permissions_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+        permissions_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
         permission_list = permissions_coll.find({
             "name": {"$in": role_in.permissions},
             "entity_ref.handle": role_in.entity_handle,
@@ -77,7 +77,7 @@ async def read_one(
     )
 
     # Decode permissions and entity handle
-    permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    permission_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     permissions = []
     if role.permissions:
         permission_list = permission_coll.find({"_id": {"$in": role.permissions}})
@@ -124,7 +124,7 @@ async def read_many(
 
     # Decode permissions and entity handle
     roles_out = []
-    permission_coll = PermissionDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    permission_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     for role in roles:
         permissions = []
         if role.permissions:
@@ -169,7 +169,7 @@ async def update(
 
     role.updated_at = datetime.now(UTC)
 
-    role_coll = RoleDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    role_coll = RoleDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     role_coll.update_one(
         {"_id": role.id},
         {"$set": role.model_dump()},
@@ -182,7 +182,7 @@ async def delete(
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
     logger.debug(f"Checking if entities are using role with ID: {role_id!r}.")
-    entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     entity_count = entity_coll.count_documents({"roles.id": role_id})
     logger.debug(f"Role {role_id!r} used by {entity_count} entities.")
     if entity_count:
@@ -192,7 +192,7 @@ async def delete(
         )
 
     logger.debug(f"Deleting role with ID: {role_id!r}.")
-    role_coll = RoleDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    role_coll = RoleDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = role_coll.delete_one({"_id": role_id})
     if res.deleted_count != 1:
         raise HTTPException(

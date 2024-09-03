@@ -150,8 +150,8 @@ class RequestAuthenticator:
                     "User email is required for root client.",
                 )
                 raise HTTPException(status_code=code, detail=m)
-            if not secrets.compare_digest(token, Settings().TAUTH_ROOT_API_KEY):
-                print(token_value, Settings().TAUTH_ROOT_API_KEY)
+            if not secrets.compare_digest(token, Settings().ROOT_API_KEY):
+                print(token_value, Settings().ROOT_API_KEY)
                 code, m = s.HTTP_401_UNAUTHORIZED, "Root token does not match env var."
                 raise HTTPException(status_code=code, detail=m)
             try:
@@ -219,7 +219,7 @@ class RequestAuthenticator:
             logger.debug(
                 f"User {user_creator_email!r} exists. Adding {creator.client_name!r} client info."
             )
-            entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+            entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
             entity_coll.update_one(
                 filter={"_id": user_data.id},
                 update={"$addToSet": {"extra": melt_key_client_extra.model_dump()}},

@@ -44,7 +44,7 @@ async def read_one(
     entity_id: str,
     infostar: Infostar = Depends(privileges.is_valid_user),
 ) -> EntityDAO:
-    entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     entity = entity_coll.find_one({"_id": entity_id})
     if not entity:
         d = {
@@ -138,7 +138,7 @@ async def add_entity_role(
             )
     # Add role to entity
     role_ref = RoleRef(id=role.id, entity=role.entity_ref)
-    entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity.id},
         {"$push": {"roles": role_ref.model_dump(mode="python")}},
@@ -166,7 +166,7 @@ async def remove_entity_role(
     role_id: PyObjectId = PathParam(),
 ):
     logger.debug(f"Removing role {role_id!r} from entity {entity_id!r}.")
-    entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity_id},
         {"$pull": {"roles": {"id": role_id}}},
