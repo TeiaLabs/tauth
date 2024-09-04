@@ -13,7 +13,7 @@ class OPAEngine(AuthorizationInterface):
     def __init__(self, settings: OPASettings):
         self.settings = settings
         logger.debug("Attempting to establish connection with OPA Engine.")
-        self.client = OpaClient()
+        self.client = OpaClient(host=settings.HOST, port=settings.PORT)
         try:
             self.client.check_connection()
         except ConnectionsError as e:
@@ -27,6 +27,7 @@ class OPAEngine(AuthorizationInterface):
         policy_name: str,
         resource: str,
         context: Optional[dict] = None,
+        **_,
     ) -> bool:
         opa_context = dict(input={})
         entity_json = entity.model_dump(mode="json")
@@ -48,6 +49,7 @@ class OPAEngine(AuthorizationInterface):
         policy_name: str,
         resource: str,
         context: Optional[dict] = None,
+        **_,
     ) -> dict:
         opa_context = dict(input=dict(context=context, entity=entity))
         opa_result = self.client.check_permission(
