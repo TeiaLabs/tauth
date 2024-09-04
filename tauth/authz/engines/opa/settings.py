@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class OPASettings(BaseSettings):
-    URL: str = "http://localhost"
-    PORT: str = "8181"
+    HOST: str = "localhost"
+    PORT: int = 8181
 
     model_config = SettingsConfigDict(
         extra="ignore",
