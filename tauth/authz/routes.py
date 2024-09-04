@@ -46,6 +46,6 @@ async def authorize(
         resource=authz_data.resource,
         context=authz_data.context,
     )
-    logger.debug(f"Authorization result: {result}.")
-    result = dict(authorized=result)
+    logger.debug(f"Authorization result: {result.authorized}.")
+    result = dict(authorized=result.filters)
     return result
