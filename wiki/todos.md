@@ -1,7 +1,6 @@
-
 # TODOs (air-management)
 
-- getsert (upsert too, *sert_many|one) genérico! (com testes) (em nossa defesa copilot que falou dos testes)
+- getsert (upsert too, \*sert_many|one) genérico! (com testes) (em nossa defesa copilot que falou dos testes)
 - fastbaby (all of it) +memetrics +logging (com testes)
 - entity intermediate? parametrizable callable factories (com testes)
 - redbaby subtypes (com testes)
@@ -37,3 +36,8 @@ extra_value = [2, 4]
 6. override headers for infostar fields
 7. integration memetrics
 8. tests
+
+## roadmapinhainha
+
+1. Add security dependency to inject security headers in swagger without depending on tauht mongo
+2. If possible, not crash when the rule is not found, if not, okay

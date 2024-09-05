@@ -20,6 +20,9 @@ async def authorize(
     request: Request,
     authz_data: AuthorizationDataIn = Body(),
 ) -> dict:
+    if authz_data.context is None:
+        authz_data.context = {}
+
     infostar = request.state.infostar
     logger.debug(f"Running authorization for user: {infostar}")
     logger.debug(f"Authorization data: {authz_data}")

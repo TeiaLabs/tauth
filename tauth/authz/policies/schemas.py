@@ -11,7 +11,7 @@ class AuthorizationPolicyIn(BaseModel):
 
 
 class AuthorizationDataIn(BaseModel):
-    context: dict
+    context: dict | None = None
     policy_name: str
     resource: str
 
