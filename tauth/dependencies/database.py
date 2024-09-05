@@ -5,7 +5,7 @@ from ..settings import Settings
 
 def init_app(sets: Settings):
     setup_database(
-        dbname=sets.TAUTH_MONGODB_DBNAME,
-        dburi=sets.TAUTH_MONGODB_URI,
-        redbaby_alias=sets.TAUTH_REDBABY_ALIAS,
+        dbname=sets.MONGODB_DBNAME,
+        dburi=sets.MONGODB_URI,
+        redbaby_alias=sets.REDBABY_ALIAS,
     )

@@ -135,4 +135,4 @@ async def delete_one(
 
     logger.debug("Deleting token.")
     # TODO: needs soft delete.
-    TokenDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS).delete_one(filters)
+    TokenDAO.collection(alias=Settings.get().REDBABY_ALIAS).delete_one(filters)

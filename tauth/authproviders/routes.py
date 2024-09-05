@@ -5,7 +5,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi import status as s
 
 from ..authz import privileges
-from ..entities.models import EntityDAO, OrganizationRef, ServiceRef
+from ..entities.models import EntityDAO
+from ..entities.schemas import OrganizationRef, ServiceRef
 from ..schemas import Infostar
 from ..schemas.gen_fields import GeneratedFields
 from ..utils import creation, reading

@@ -4,16 +4,16 @@ from loguru import logger
 from opa_client import OpaClient
 from opa_client.errors import ConnectionsError, DeletePolicyError, RegoParseError
 
-from ...entities.models import EntityDAO
-from ...settings import Settings
-from ..policies.models import AuthorizationPolicyDAO
-from .interface import AuthorizationInterface
+from ....entities.models import EntityDAO
+from ..interface import AuthorizationInterface
+from .settings import OPASettings
 
 
 class OPAEngine(AuthorizationInterface):
-    def __init__(self):
+    def __init__(self, settings: OPASettings):
+        self.settings = settings
         logger.debug("Attempting to establish connection with OPA Engine.")
-        self.client = OpaClient()
+        self.client = OpaClient(host=settings.HOST, port=settings.PORT)
         try:
             self.client.check_connection()
         except ConnectionsError as e:
@@ -27,6 +27,7 @@ class OPAEngine(AuthorizationInterface):
         policy_name: str,
         resource: str,
         context: Optional[dict] = None,
+        **_,
     ) -> bool:
         opa_context = dict(input={})
         entity_json = entity.model_dump(mode="json")
@@ -40,22 +41,6 @@ class OPAEngine(AuthorizationInterface):
         )
         logger.debug(f"Raw OPA result: {opa_result}")
         opa_result = opa_result["result"]
-        return opa_result
-
-    def get_filters(
-        self,
-        entity: EntityDAO,
-        policy_name: str,
-        resource: str,
-        context: Optional[dict] = None,
-    ) -> dict:
-        opa_context = dict(input=dict(context=context, entity=entity))
-        opa_result = self.client.check_permission(
-            input_data=opa_context,
-            policy_name=policy_name,
-            rule_name=resource,
-        )
-        logger.debug(f"Raw OPA result: {opa_result}")
         return opa_result
 
     def upsert_policy(self, policy_name: str, policy_content: str) -> bool:

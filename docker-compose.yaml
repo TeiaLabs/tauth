@@ -7,7 +7,8 @@ services:
       target: run
     env_file: .env
     ports:
-      - ${PORT}:${PORT}
+      - ${TAUTH_PORT}:${TAUTH_PORT}
+      - ${CACHEIA_PORT}:${CACHEIA_PORT}
     develop:
       watch:
         - path: ./tauth
@@ -15,8 +16,11 @@ services:
           target: /app/tauth
     depends_on:
       - mongodb
+    tty: true
+    stdin_open: true
 
   mongodb:
+    container_name: tauth-mongodb
     image: mongo:latest
     ports:
       - "27017:27017"

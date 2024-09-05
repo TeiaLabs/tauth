@@ -17,9 +17,6 @@ service_name = Path(__file__).parents[1].name
 router = APIRouter(prefix=f"/{service_name}", tags=[service_name + " 🔐"])
 
 
-# TODO: read_one, update_one, delete_one
-
-
 @router.put("/policies", status_code=s.HTTP_201_CREATED)
 @router.put("/policies/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def upsert_one(
@@ -55,7 +52,9 @@ async def read_many(
 
 @router.delete("/policies/{id}", status_code=s.HTTP_204_NO_CONTENT)
 @router.delete(
-    "/policies/{id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False
+    "/policies/{id}/",
+    status_code=s.HTTP_204_NO_CONTENT,
+    include_in_schema=False,
 )
 async def delete_one(
     request: Request,

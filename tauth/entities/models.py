@@ -1,33 +1,15 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
+from ..authz.roles.schemas import RoleRef
 from ..schemas.attribute import Attribute
 from ..utils.teia_behaviors import Authoring
-
-
-class EntityRefBase(BaseModel):
-    handle: str
-
-
-class EntityRef(EntityRefBase):
-    type: Literal["organization", "service", "user"]
-
-
-class OrganizationRef(EntityRefBase):
-    type: Literal["organization"] = "organization"
-
-
-class ServiceRef(EntityRefBase):
-    type: Literal["service"] = "service"
-
-
-class UserRef(EntityRefBase):
-    type: Literal["user"] = "user"
+from .schemas import EntityRef
 
 
 class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
@@ -37,9 +19,7 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     extra: list[Attribute] = Field(default_factory=list)
     handle: str
     owner_ref: Optional[EntityRef]
-    roles: list[str] = Field(
-        default_factory=list
-    )  # e.g.: ["teia-admin", "allai-user-basic"]
+    roles: list[RoleRef] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]
 
     @classmethod
@@ -49,7 +29,7 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     @classmethod
     def indexes(cls) -> list[IndexModel]:
         idxs = [
-            IndexModel("roles"),
+            IndexModel("roles.id"),
             IndexModel(
                 [("type", 1), ("handle", 1), ("owner_ref.handle", 1)], unique=True
             ),
