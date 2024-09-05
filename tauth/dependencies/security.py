@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from fastapi import FastAPI, Header, HTTPException, Request, Security
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
@@ -21,6 +21,7 @@ class RequestAuthenticator:
     @staticmethod
     def validate(
         request: Request,
+        background_tasks: BackgroundTasks,
         user_email: str | None = Header(
             default=None, alias="X-User-Email", description="Ignore when using OAuth."
         ),
@@ -52,15 +53,27 @@ class RequestAuthenticator:
 
         if token_value.startswith("MELT_"):
             logger.debug("Authenticating with a MELT API key (legacy).")
-            melt_key.RequestAuthenticator.validate(request, user_email, token_value)
+            melt_key.RequestAuthenticator.validate(
+                request=request,
+                user_email=user_email,
+                api_key_header=token_value,
+                background_tasks=background_tasks,
+            )
             return
+
         if id_token is None:
             raise HTTPException(401, detail={"msg": "Missing ID token."})
         else:
             logger.debug("Authenticating with an Auth0 provider.")
             # figure out which provider/iss it's from
-            auth0_dyn.RequestAuthenticator.validate(request, token_value, id_token)
+            auth0_dyn.RequestAuthenticator.validate(
+                request=request,
+                token_value=token_value,
+                id_token=id_token,
+                background_tasks=background_tasks,
+            )
             return
+
         # TODO: check if it starts with TAUTH_
         # TODO: check if it's a JWT
 
