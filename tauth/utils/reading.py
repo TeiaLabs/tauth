@@ -1,6 +1,5 @@
 from typing import Type, TypeVar
 
-from cacheia_decorators.remote import cache
 from crypteia import Multibasing, Multihashing, ToBytes, compose
 from fastapi import HTTPException
 from redbaby.behaviors import ReadingMixin
@@ -38,16 +37,6 @@ def read_one(infostar: Infostar, model: Type[T], identifier: PyObjectId | str) -
     return item
 
 
-def get_cacheia_key(infostar: Infostar, model: Type[T], **filters) -> str:
-    key = f"{model.__name__}"
-    # key += f"__{infostar.model_dump(exclude={"request_id"})}"
-    key += f"__{filters}"
-    get_hash = compose(ToBytes(), Multihashing("sha3-224"), Multibasing("base58btc"))
-    digest = get_hash(key)
-    return digest
-
-
-# @cache(key_builder=get_cacheia_key)
 def read_one_filters(infostar: Infostar, model: Type[T], **filters) -> T:
     f = {k: v for k, v in filters.items() if v is not None}
     items = model.find(

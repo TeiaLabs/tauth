@@ -8,7 +8,6 @@ services:
     env_file: .env
     ports:
       - ${TAUTH_PORT}:${TAUTH_PORT}
-      - ${CACHEIA_PORT}:${CACHEIA_PORT}
     develop:
       watch:
         - path: ./tauth

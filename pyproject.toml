@@ -40,18 +40,12 @@ dependencies = [
     "python-multipart",
     "opa-python-client",
     "redbaby==1.0.4",
-    "uvicorn",
+    "uvicorn<=0.29.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "pytest-order", "pytest_mock"]
-first_party = [
-    "cacheia_schemas==1.0.0.post3",
-    "cacheia_decorators==1.0.0.post3",
-    "cacheia_client==1.0.0.post3",
-    "cacheia_api==1.0.0.post3",
-    "cacheia==1.0.0.post3",
-]
+first_party = []
 docs = [
     "mkdocs",
     "mkdocstrings[python]",
