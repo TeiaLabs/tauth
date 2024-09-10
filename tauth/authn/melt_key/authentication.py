@@ -169,7 +169,7 @@ class RequestAuthenticator:
                 extra=[melt_key_client_extra],
                 created_by=infostar,
             )
-            collection = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+            collection = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
             with contextlib.suppress(BulkWriteError):
                 collection.insert_many(
                     [org_in.bson(), user_in.bson()],
@@ -184,7 +184,7 @@ class RequestAuthenticator:
                 created_by=infostar,
             )
             collection = AuthProviderDAO.collection(
-                alias=Settings.get().TAUTH_REDBABY_ALIAS
+                alias=Settings.get().REDBABY_ALIAS
             )
             with contextlib.suppress(DuplicateKeyError):
                 collection.insert_one(provider_in.bson())
@@ -213,7 +213,7 @@ class RequestAuthenticator:
             {"$unwind": "$user"},
         ]
 
-        collection = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+        collection = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
         if user_creator_email:
             pipeline.append(
                 {"$match": {"user.type": "user", "user.handle": user_creator_email}}
@@ -253,7 +253,7 @@ class RequestAuthenticator:
 
         def callback():
             logger.debug(f"Adding {creator.client_name!r} client info.")
-            entity_coll = EntityDAO.collection(alias=Settings.get().TAUTH_REDBABY_ALIAS)
+            entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
             entity_coll.update_one(
                 filter={"_id": user["_id"]},
                 update={"$addToSet": {"extra": melt_key_client_extra.model_dump()}},

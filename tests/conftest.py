@@ -14,13 +14,13 @@ dotenv.load_dotenv()
 
 @pytest.fixture(scope="session")
 def mongo_client() -> MongoClient:
-    client = MongoClient(Settings.get().TAUTH_MONGODB_URI)
+    client = MongoClient(Settings.get().MONGODB_URI)
     return client
 
 
 @pytest.fixture(scope="session")
 def tauth_db(mongo_client: MongoClient) -> Database:
-    return mongo_client[Settings.get().TAUTH_MONGODB_DBNAME]
+    return mongo_client[Settings.get().MONGODB_DBNAME]
 
 
 @pytest.fixture(scope="session")
@@ -30,7 +30,7 @@ def client() -> TestClient:
 
 @pytest.fixture(scope="session")
 def test_token_value() -> str:
-    return Settings().TAUTH_ROOT_API_KEY
+    return Settings().ROOT_API_KEY
 
 
 @pytest.fixture(scope="session")
