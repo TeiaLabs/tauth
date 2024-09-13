@@ -4,8 +4,9 @@ from typing import Literal
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .authz.engines.opa.settings import OPASettings
-from .authz.engines.remote.settings import RemoteSettings
+from .authn import remote as authn_remote
+from .authz.engines import opa as authz_opa
+from .authz.engines import remote as authz_remote
 
 
 class Settings(BaseSettings):
@@ -22,15 +23,23 @@ class Settings(BaseSettings):
 
     # Security
     ROOT_API_KEY: str = "MELT_/--default--1"
-    AUTHZ_ENGINE: Literal["opa", "remote"] = "opa"
+    AUTHN_ENGINE: Literal["database", "remote"]
+    AUTHZ_ENGINE: Literal["opa", "remote"]
 
     @computed_field
     @property
-    def AUTHZ_ENGINE_SETTINGS(self) -> OPASettings | RemoteSettings:
+    def AUTHN_ENGINE_SETTINGS(self) -> authn_remote.RemoteSettings:
+        return authn_remote.RemoteSettings()
+
+    @computed_field
+    @property
+    def AUTHZ_ENGINE_SETTINGS(
+        self,
+    ) -> authz_opa.OPASettings | authz_remote.RemoteSettings:
         if self.AUTHZ_ENGINE == "opa":
-            return OPASettings()
+            return authz_opa.OPASettings()
         elif self.AUTHZ_ENGINE == "remote":
-            return RemoteSettings()  # type: ignore
+            return authz_remote.RemoteSettings()  # type: ignore
         else:
             raise ValueError("Invalid AUTHZ_ENGINE_SETTINGS value")
 

@@ -5,8 +5,11 @@ from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
 
+from tauth.settings import Settings
+
 from ..authn import auth0_dyn
 from ..authn.melt_key import authentication as melt_key
+from ..authn.remote import engine as remote
 
 
 def init_app(app: FastAPI):
@@ -50,6 +53,16 @@ class RequestAuthenticator:
             raise HTTPException(
                 401, detail={"msg": "Invalid authorization scheme; expected 'bearer'."}
             )
+
+        if Settings.get().AUTHN_ENGINE == "remote":
+            logger.debug("Authenticating with a Remote Auth (new ⚡).")
+            remote.RequestAuthenticator.validate(
+                request=request,
+                access_token=token_value,
+                id_token=id_token,
+                user_email=user_email,
+            )
+            return
 
         if token_value.startswith("MELT_"):
             logger.debug("Authenticating with a MELT API key (legacy).")

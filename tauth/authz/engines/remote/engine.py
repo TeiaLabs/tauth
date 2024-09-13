@@ -23,23 +23,13 @@ class RemoteEngine(AuthorizationInterface):
         context: Optional[dict] = None,
         **_,
     ) -> AuthorizationResponse:
-        logger.debug(f"Authenticating user using policy {policy_name}")
+        logger.debug(f"Authorizing user using policy {policy_name}")
         headers = {
             "Authorization": f"Bearer {access_token}",
             "X-ID-Token": id_token,
             "X-User-Email": user_email,
         }
         headers = {k: v for k, v in headers.items() if v is not None}
-        response = self.client.post("/authn", headers=headers)
-        if response.status_code != s.HTTP_200_OK:
-            logger.warning(f"Authentication failed using policy {policy_name}")
-            return AuthorizationResponse(
-                authorized=False,
-                filters={},
-                details=response.json(),
-            )
-
-        logger.debug(f"Authorizing user using policy {policy_name}")
         body = {
             "context": context,
             "policy_name": policy_name,
