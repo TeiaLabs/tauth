@@ -82,14 +82,32 @@ class RequestAuthenticator:
     @staticmethod
     def get_authprovider(token_value: str) -> AuthProviderDAO:
         logger.debug("Getting AuthProvider.")
-        token_claims = get_token_unverified_claims(token_value)
         filters: dict[str, Any] = {"type": "auth0"}
+
+        token_claims = get_token_unverified_claims(token_value)
+
+        matches = []
         if aud := token_claims.get("aud"):
             # We assume that the actual audience is the first element in the list.
             # The second element is the issuer's "userinfo" endpoint.
-            filters["external_ids"] = {
-                "$elemMatch": {"name": "audience", "value": aud[0]}
-            }
+            matches.append(
+                {
+                    "$elemMatch": {"name": "audience", "value": aud[0]},
+                }
+            )
+
+        if org_id := token_claims.get("org_id"):
+            matches.append(
+                {
+                    "$elemMatch": {"name": "org_id", "value": org_id},
+                }
+            )
+
+        if matches:
+            if len(matches) > 1:
+                filters["external_ids"] = {"$all": matches}
+            else:
+                filters["external_ids"] = matches[0]
 
         provider = reading.read_one_filters(
             infostar={}, model=AuthProviderDAO, **filters
@@ -162,7 +180,6 @@ class RequestAuthenticator:
         user_data = {
             "user_id": id_claims.get("sub"),
             "user_email": id_claims.get("email"),
-            "org_id": access_claims.get("org_id"),
         }
         return user_data
 
@@ -202,7 +219,7 @@ class RequestAuthenticator:
             extra={},
             service_handle=authprovider.service_ref.handle,  # TODO: azp
             user_handle=user_data["user_email"],
-            user_owner_handle=user_data["org_id"],  # TODO map this to an org
+            user_owner_handle=authprovider.organization_ref.handle,
             client_ip=ip,
             original=None,
         )

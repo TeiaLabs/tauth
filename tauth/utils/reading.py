@@ -38,6 +38,7 @@ def read_one(infostar: Infostar, model: Type[T], identifier: PyObjectId | str) -
 
 
 def read_one_filters(infostar: Infostar, model: Type[T], **filters) -> T:
+    print(filters)
     f = {k: v for k, v in filters.items() if v is not None}
     items = model.find(
         f,
@@ -45,6 +46,7 @@ def read_one_filters(infostar: Infostar, model: Type[T], **filters) -> T:
         validate=True,
         lazy=False,
     )
+    print(items)
     if not items:
         d = {
             "error": "DocumentNotFound",
