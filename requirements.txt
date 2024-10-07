@@ -8,5 +8,5 @@ pydantic[dotenv,email]
 pymongo
 python-dotenv
 python-multipart
-redbaby==1.0.2
+redbaby==1.0.5
 uvicorn
