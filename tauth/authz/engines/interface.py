@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from ...entities.models import EntityDAO
-
 
 class Unauthorized(Exception):
     """
@@ -28,7 +26,6 @@ class AuthorizationInterface(ABC):
     @abstractmethod
     def is_authorized(
         self,
-        entity: EntityDAO,
         policy_name: str,
         resource: str,
         context: Optional[dict] = None,

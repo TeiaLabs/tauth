@@ -13,6 +13,12 @@ class RemoteEngine(AuthorizationInterface):
         self.settings = settings
         self.client = httpx.Client(base_url=self.settings.API_URL)
 
+    @staticmethod
+    def _get_authorization_header(access_token: str) -> str:
+        if access_token.startswith("Bearer"):
+            return access_token
+        return f"Bearer {access_token}"
+
     def is_authorized(
         self,
         policy_name: str,
@@ -24,8 +30,9 @@ class RemoteEngine(AuthorizationInterface):
         **_,
     ) -> AuthorizationResponse:
         logger.debug(f"Authorizing user using policy {policy_name}")
+
         headers = {
-            "Authorization": f"Bearer {access_token}",
+            "Authorization": self._get_authorization_header(access_token),
             "X-ID-Token": id_token,
             "X-User-Email": user_email,
         }
@@ -62,8 +69,9 @@ class RemoteEngine(AuthorizationInterface):
         policy_description: str = "",
     ) -> bool:
         logger.debug(f"Upserting policy {policy_name!r} remotely.")
+
         headers = {
-            "Authorization": f"Bearer {access_token}",
+            "Authorization": self._get_authorization_header(access_token),
             "X-ID-Token": id_token,
             "X-User-Email": user_email,
         }

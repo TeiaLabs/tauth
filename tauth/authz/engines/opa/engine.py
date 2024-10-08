@@ -23,9 +23,9 @@ class OPAEngine(AuthorizationInterface):
 
     def is_authorized(
         self,
-        entity: EntityDAO,
         policy_name: str,
         resource: str,
+        entity: EntityDAO,
         context: Optional[dict] = None,
         **_,
     ) -> bool:
