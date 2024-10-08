@@ -1,28 +1,81 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12 AS base
 
-RUN mkdir -p -m 0600 /root/.ssh && \
-    ssh-keyscan -H github.com >> /root/.ssh/known_hosts
+ARG PYTHON_VERSION=3.12.4
+ARG PYTHON_IMAGE_TAG=python:${PYTHON_VERSION}-slim
+ARG VIRTUAL_ENV=/root/.venv
 
-RUN apt-get update && apt-get -y upgrade && \
-    apt-get -y install build-essential && \
-    apt-get -y install git
-
+FROM ${PYTHON_IMAGE_TAG} AS base
+ARG VIRTUAL_ENV
+ENV \
+    # Output goes straight away to stdout/stderr
+    PYTHONBUFFERED=1 \
+    # Do not write .pyc files
+    PYTHONDONTWRITEBYTECODE=1 \
+    # Set virtual environment path
+    VIRTUAL_ENV=${VIRTUAL_ENV} \
+    # Add virtual environment to path
+    PATH="${VIRTUAL_ENV}/bin:${PATH}"
+# Install git
+RUN apt update && apt install -y git wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-RUN pip install --upgrade pip
-COPY . .
-RUN --mount=type=ssh \
-    --mount=type=cache,target=/root/.cache/pip \
-    pip install .[first_party]
-
 # Install OPA
-RUN wget https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O opa
-RUN chmod u+x ./opa
+RUN wget https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O opa \
+    && chmod u+x ./opa
 
-FROM base AS test
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements-test.txt
-CMD ["pytest", "tests"]
+FROM base AS build-base
+ENV \
+    # Make uv compile Python code to .pyc files
+    UV_COMPILE_BYTECODE=1 \
+    # Set the default uv cache directory
+    UV_CACHE_DIR=/root/.cache/uv \
+    # Copy from the cache instead of linking since it's a mounted volume
+    UV_LINK_MODE=copy \
+    # Directory to use for the virtual environment
+    UV_PROJECT_ENVIRONMENT=${VIRTUAL_ENV}
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+# Copy build dependency information
+COPY ./uv.lock ./pyproject.toml ./
 
-FROM base AS run
+FROM build-base AS build-development
+# Install project dependencies without installing the project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project
+# Install project itself
+COPY ./.git ./.git
+COPY ./tauth ./tauth
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
+
+FROM build-base AS build-production
+# Install project dependencies without installing the project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --no-dev
+# Install project itself
+COPY ./.git ./.git
+COPY ./tauth ./tauth
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
+
+FROM base AS local
+# Copy the project's virtual environment from the build stage
+COPY --from=build-development ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+# Copy necessary files
+COPY ./pyproject.toml ./pyproject.toml
+COPY ./resources ./resources
+COPY ./tauth ./tauth
+
+FROM local AS development
+CMD ["python", "-m", "tauth"]
+
+FROM local AS test
+COPY ./tests ./tests
+CMD ["python", "-m", "pytest", "-v"]
+
+FROM base AS production
+# Copy the project's virtual environment from the build stage
+COPY --from=build-development ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+# Copy necessary files
+COPY ./resources ./resources
+COPY ./tauth ./tauth
 CMD [ "python", "-m", "tauth" ]

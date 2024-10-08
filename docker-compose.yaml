@@ -4,7 +4,7 @@ services:
     build:
       context: ./
       dockerfile: ./Dockerfile
-      target: run
+      target: development
     env_file: .env
     ports:
       - ${TAUTH_PORT}:${TAUTH_PORT}
@@ -13,6 +13,9 @@ services:
         - path: ./tauth
           action: sync
           target: /app/tauth
+        - path: ./resources
+          action: sync
+          target: /app/resources
     depends_on:
       - mongodb
     tty: true

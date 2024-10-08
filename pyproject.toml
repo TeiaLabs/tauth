@@ -2,22 +2,6 @@
 requires = ["setuptools>=60", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["tauth"]
-namespaces = false
-
-[tool.setuptools_scm]
-version_scheme = "post-release"
-local_scheme = "no-local-version"
-
-[tool.black]
-line-length = 88
-target-version = ["py312"]
-
-[tool.isort]
-profile = "black"
-line_length = 88
-
 [project]
 name = "tauth"
 authors = [{ name = "TeiaLabs", email = "contato@teialabs.com" }]
@@ -33,26 +17,76 @@ dependencies = [
     "httpx",
     "loguru",
     "multiformats",
-    "pydantic[dotenv,email]",
+    "opa-python-client",
+    "pydantic[email]",
     "PyJWT",
     "pymongo",
     "python-dotenv",
     "python-multipart",
-    "opa-python-client",
     "redbaby==1.0.4",
     "uvicorn<=0.29.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov", "pytest-order", "pytest_mock"]
-first_party = []
 docs = [
-    "mkdocs",
-    "mkdocstrings[python]",
     "mkdocs-gen-files",
     "mkdocs-literate-nav",
     "mkdocs-material",
     "mkdocs-section-index",
+    "mkdocs",
+    "mkdocstrings[python]",
+]
+
+[tool.uv]
+managed = true
+package = true
+cache-keys = [{ file = "pyproject.toml" }, { git = true }]
+reinstall-package = ["my-package"]
+dev-dependencies = [
+    "mypy>=1.11.1",
+    "pytest-asyncio>=0.23.8",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-order>=1.3.0",
+    "pytest>=8.3.2",
+    "ruff>=0.5.6",
+]
+
+[tool.setuptools.packages.find]
+include = ["tauth"]
+namespaces = false
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "no-local-version"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+ignore = [
+    # Allow function call in default arguments
+    # Important for fastapi dependency injection
+    "B008",
+    # Allow lambda assignment
+    "E731",
+    # Allow raising exceptions without base 
+    # Important for HTTPExceptions
+    "B904",
 ]
 
 [tool.pytest.ini_options]
