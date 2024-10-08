@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 
 import uvicorn
 
@@ -11,8 +12,9 @@ def main():
 
     # Authorization API
     # improved debug logging: --log-format=json-pretty
+    path_opa_executable = Path(__file__).parents[1] / "opa"
     subprocess.Popen(
-        "./opa run --server --log-level=debug --v1-compatible",
+        f"{path_opa_executable} run --server --log-level=debug --v1-compatible",
         shell=True,
         stdout=sys.stdout,
         stderr=sys.stderr,

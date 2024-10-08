@@ -10,9 +10,8 @@ from pymongo.errors import BulkWriteError, DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
-from ...authproviders.schemas import AuthProviderMoreIn
 from ...entities.models import EntityDAO
-from ...entities.schemas import EntityIntermediate, EntityRef, OrganizationRef
+from ...entities.schemas import EntityRef, OrganizationRef
 from ...schemas import Creator, Infostar
 from ...schemas.attribute import Attribute
 from ...settings import Settings
@@ -118,8 +117,8 @@ class RequestAuthenticator:
                     "User email is required for root client.",
                 )
                 raise HTTPException(status_code=code, detail=m)
-            if not secrets.compare_digest(token, Settings().ROOT_API_KEY):
-                print(token_value, Settings().ROOT_API_KEY)
+            if not secrets.compare_digest(token, Settings.get().ROOT_API_KEY):
+                print(token_value, Settings.get().ROOT_API_KEY)
                 code, m = s.HTTP_401_UNAUTHORIZED, "Root token does not match env var."
                 raise HTTPException(status_code=code, detail=m)
 

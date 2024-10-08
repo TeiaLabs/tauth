@@ -1,13 +1,11 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 
 from ..authz.engines.factory import AuthorizationEngine
-from ..dependencies.security import RequestAuthenticator
 from ..entities.models import EntityDAO
-from ..schemas import Infostar
 from .policies.schemas import AuthorizationDataIn
 
 service_name = Path(__file__).parent.name
@@ -38,7 +36,7 @@ async def authorize(
         )
     logger.debug(f"Entity found: {entity}.")
 
-    logger.debug(f"Executing authorization logic.")
+    logger.debug("Executing authorization logic.")
     # TODO: determine if we're gonna support arbitrary outputs here (e.g., filters)
     result = authz_engine.is_authorized(
         entity=entity,

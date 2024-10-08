@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 
 from ..settings import Settings
-from . import authorization, database, security
+from . import authentication, authorization, database
 
 
 def init_app(app: FastAPI, sets: Settings) -> None:
     database.init_app(sets)
-    security.init_app(app)
+    authentication.init_app(app)
     authorization.init_app()

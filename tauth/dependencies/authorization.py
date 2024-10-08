@@ -1,57 +1,46 @@
-from pathlib import Path
+from typing import Callable
 
-from fastapi import HTTPException
+from fastapi import Header, HTTPException, Security
 from fastapi import status as s
+from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from loguru import logger
-from redbaby.pyobjectid import PyObjectId
 
 from ..authz.engines.factory import AuthorizationEngine
-from ..authz.policies.controllers import upsert_one
-from ..authz.policies.schemas import AuthorizationPolicyIn
-from ..schemas import Infostar
-from ..settings import Settings
-
-DEFAULT_POLICIES = {
-    "melt-key": {
-        "path": Path(__file__).parents[2] / "resources" / "policies" / "melt-key.rego",
-        "description": "MELT API Key privilege levels.",
-    },
-}
-
-SYSTEM_INFOSTAR = Infostar(
-    request_id=PyObjectId(),
-    apikey_name="default",
-    authprovider_org="/",
-    authprovider_type="melt-key",
-    extra={},
-    service_handle="tauth",
-    user_handle="sysadmin@teialabs.com",
-    user_owner_handle="/",
-    original=None,
-    client_ip="127.0.0.1",
-)
+from ..authz.engines.interface import AuthorizationResponse
 
 
 def init_app():
     logger.debug("Initializing policy engine.")
     AuthorizationEngine.setup()
-    sets = Settings.get()
-    if sets.AUTHZ_ENGINE == "opa":
-        # TODO: maybe move this to authz engine
-        for name, policy_data in DEFAULT_POLICIES.items():
-            logger.debug(f"Loading policy: {name!r} from {policy_data['path']!r}.")
-            policy_content = policy_data["path"].read_text()
-            policy = AuthorizationPolicyIn(
-                name=name,
-                description=policy_data["description"],
-                policy=policy_content,
-                type="opa",
-            )
-            try:
-                upsert_one(policy, SYSTEM_INFOSTAR)
-            except HTTPException as e:
-                if e.status_code != s.HTTP_409_CONFLICT:
-                    raise e
-                logger.debug(f"Policy {name} already exists. Skipping.")
-
     logger.debug("Policy engine initialized.")
+
+
+def authorize(policy_name: str, resource: str) -> Callable[..., AuthorizationResponse]:
+    AuthorizationEngine.setup()
+    engine = AuthorizationEngine.get()
+
+    def wrap(
+        user_email: str | None = Header(
+            default=None, alias="X-User-Email", description="Ignore when using OAuth."
+        ),
+        id_token: str | None = Header(
+            default=None, alias="X-ID-Token", description="Auth0 ID token."
+        ),
+        authorization: HTTPAuthorizationCredentials | None = Security(
+            HTTPBase(scheme="bearer", auto_error=False)
+        ),
+    ):
+        response = engine.is_authorized(
+            policy_name=policy_name,
+            resource=resource,
+            access_token=authorization,
+            id_token=id_token,
+            user_email=user_email,
+        )
+        if not response.authorized:
+            raise HTTPException(
+                status_code=s.HTTP_403_FORBIDDEN, detail=response.details
+            )
+        return response
+
+    return wrap

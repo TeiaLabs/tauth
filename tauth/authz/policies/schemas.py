@@ -1,5 +1,6 @@
 from typing import Literal
 
+from fastapi.openapi.models import Example
 from pydantic import BaseModel
 
 
@@ -15,8 +16,6 @@ class AuthorizationDataIn(BaseModel):
     policy_name: str
     resource: str
 
-
-from fastapi.openapi.models import Example
 
 POLICY_EXAMPLES = {
     "opa_melt_key": Example(

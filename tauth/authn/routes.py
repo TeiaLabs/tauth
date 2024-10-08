@@ -1,9 +1,8 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi import status as s
 
-from ..dependencies.security import RequestAuthenticator
 from ..schemas import Infostar
 
 service_name = Path(__file__).parent.name

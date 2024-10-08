@@ -1,21 +1,15 @@
 from typing import Iterable
 
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Security
+from fastapi import BackgroundTasks, Header, HTTPException, Request, Security
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 from http_error_schemas.schemas import RequestValidationError
 from loguru import logger
 
 from tauth.settings import Settings
 
-from ..authn import auth0_dyn
-from ..authn.melt_key import authentication as melt_key
-from ..authn.remote import engine as remote
-
-
-def init_app(app: FastAPI):
-    from tauth.utils.fastapi_extension import get_depends
-
-    app.router.dependencies.append(get_depends())
+from . import auth0_dyn
+from .melt_key import authentication as melt_key
+from .remote import engine as remote
 
 
 class RequestAuthenticator:
