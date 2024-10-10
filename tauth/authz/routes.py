@@ -35,15 +35,14 @@ async def authorize(
             detail=dict(msg=message),
         )
     logger.debug(f"Entity found: {entity}.")
+    authz_data.context["entity"] = entity.model_dump(mode="json")
 
     logger.debug("Executing authorization logic.")
     # TODO: determine if we're gonna support arbitrary outputs here (e.g., filters)
     result = authz_engine.is_authorized(
-        entity=entity,
         policy_name=authz_data.policy_name,
         resource=authz_data.resource,
         context=authz_data.context,
     )
-    logger.debug(f"Authorization result: {result.authorized}.")
-    result = dict(authorized=result.filters)
-    return result
+    logger.debug(f"Authorization result: {result}.")
+    return result.model_dump(mode="json")

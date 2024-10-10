@@ -1,5 +1,3 @@
-from typing import Optional
-
 import httpx
 from fastapi import status as s
 from loguru import logger
@@ -12,6 +10,15 @@ class RemoteEngine(AuthorizationInterface):
     def __init__(self, settings: RemoteSettings):
         self.settings = settings
         self.client = httpx.Client(base_url=self.settings.API_URL)
+        logger.debug("Establishing connection with remote AuthZ engine.")
+        try:
+            self.client.get("/")
+        except Exception as e:
+            logger.error(
+                f"Failed to establish connection with remote AuthZ engine: {e}"
+            )
+            raise e
+        logger.debug("Remote AuthZ engine is running.")
 
     @staticmethod
     def _get_authorization_header(access_token: str) -> str:
@@ -26,7 +33,7 @@ class RemoteEngine(AuthorizationInterface):
         access_token: str,
         id_token: str | None = None,
         user_email: str | None = None,
-        context: Optional[dict] = None,
+        context: dict | None = None,
         **_,
     ) -> AuthorizationResponse:
         logger.debug(f"Authorizing user using policy {policy_name}")
@@ -37,6 +44,8 @@ class RemoteEngine(AuthorizationInterface):
             "X-User-Email": user_email,
         }
         headers = {k: v for k, v in headers.items() if v is not None}
+        if context is None:
+            context = {}
         body = {
             "context": context,
             "policy_name": policy_name,
@@ -48,16 +57,15 @@ class RemoteEngine(AuthorizationInterface):
             logger.warning(f"Authorization failed using policy {policy_name}")
             return AuthorizationResponse(
                 authorized=False,
-                filters={},
                 details=response.json(),
             )
-
-        logger.debug(f"Authorization succeeded using policy {policy_name}")
-        return AuthorizationResponse(
-            authorized=True,
-            filters=response.json(),
-            details=None,
-        )
+        logger.debug(f"Authorization raw response: {response.json()}")
+        res = AuthorizationResponse(**response.json())
+        if not res.authorized:
+            logger.warning(f"Authorization failed using policy {policy_name}")
+        else:
+            logger.debug(f"Authorization succeeded using policy {policy_name}")
+        return res
 
     def upsert_policy(
         self,
@@ -67,6 +75,7 @@ class RemoteEngine(AuthorizationInterface):
         id_token: str | None = None,
         user_email: str | None = None,
         policy_description: str = "",
+        **kwargs,
     ) -> bool:
         logger.debug(f"Upserting policy {policy_name!r} remotely.")
 

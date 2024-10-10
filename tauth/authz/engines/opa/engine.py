@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from fastapi import HTTPException
 from fastapi import status as s
@@ -8,11 +7,10 @@ from opa_client import OpaClient
 from opa_client.errors import ConnectionsError, DeletePolicyError, RegoParseError
 from redbaby.pyobjectid import PyObjectId
 
-from ....entities.models import EntityDAO
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
 from ...policies.schemas import AuthorizationPolicyIn
-from ..interface import AuthorizationInterface
+from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import OPASettings
 
 PATH_POLICIES = Path(__file__).parents[4] / "resources" / "policies"
@@ -72,25 +70,30 @@ class OPAEngine(AuthorizationInterface):
         self,
         policy_name: str,
         resource: str,
-        entity: EntityDAO,
-        context: Optional[dict] = None,
-        **_,
-    ) -> bool:
+        context: dict | None = None,
+        **kwargs,
+    ) -> AuthorizationResponse:
         opa_context = dict(input={})
-        entity_json = entity.model_dump(mode="json")
-        opa_context["input"]["entity"] = entity_json
         if context:
-            opa_context["input"] |= context
+            opa_context |= context
         opa_result = self.client.check_permission(
             input_data=opa_context,
             policy_name=policy_name,
             rule_name=resource,
         )
         logger.debug(f"Raw OPA result: {opa_result}")
-        opa_result = opa_result["result"]
-        return opa_result
+        # TODO: we should be careful here and revisit this soon
+        # if the result is an object, the app should check this
+        authorized = (
+            opa_result["result"] if isinstance(opa_result["result"], bool) else True
+        )
+        res = AuthorizationResponse(
+            authorized=authorized,
+            details=opa_result,
+        )
+        return res
 
-    def upsert_policy(self, policy_name: str, policy_content: str) -> bool:
+    def upsert_policy(self, policy_name: str, policy_content: str, **_) -> bool:
         logger.debug(f"Upserting policy {policy_name!r} in OPA.")
         try:
             result = self.client.update_policy_from_string(

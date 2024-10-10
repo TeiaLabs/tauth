@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class Unauthorized(Exception):
@@ -8,18 +10,9 @@ class Unauthorized(Exception):
     """
 
 
-class AuthorizationResponse:
-    def __init__(self, authorized: bool, filters: dict, details: Any) -> None:
-        self.authorized = authorized
-        self.details = details
-        self.__filters = filters
-
-    @property
-    def filters(self) -> dict:
-        if self.authorized:
-            return self.__filters
-
-        raise Unauthorized()
+class AuthorizationResponse(BaseModel):
+    authorized: bool
+    details: Any
 
 
 class AuthorizationInterface(ABC):
@@ -28,7 +21,7 @@ class AuthorizationInterface(ABC):
         self,
         policy_name: str,
         resource: str,
-        context: Optional[dict] = None,
+        context: dict | None = None,
         **kwargs,
     ) -> AuthorizationResponse: ...
 
