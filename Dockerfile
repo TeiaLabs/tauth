@@ -74,8 +74,9 @@ CMD ["python", "-m", "pytest", "-v"]
 
 FROM base AS production
 # Copy the project's virtual environment from the build stage
-COPY --from=build-development ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+COPY --from=build-production ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 # Copy necessary files
+COPY ./pyproject.toml ./pyproject.toml
 COPY ./resources ./resources
 COPY ./tauth ./tauth
 CMD [ "python", "-m", "tauth" ]
