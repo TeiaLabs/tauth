@@ -1,21 +1,21 @@
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Header, HTTPException, Security
 from fastapi import status as s
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
-from loguru import logger
 
 from ..authz.engines.factory import AuthorizationEngine
 from ..authz.engines.interface import AuthorizationResponse
 
 
 def init_app():
-    logger.debug("Initializing policy engine.")
     AuthorizationEngine.setup()
-    logger.debug("Policy engine initialized.")
 
 
-def authorize(policy_name: str, resource: str) -> Callable[..., AuthorizationResponse]:
+def authorize(
+    policy_name: str,
+    resource: str,
+) -> Callable[..., AuthorizationResponse]:
     AuthorizationEngine.setup()
     engine = AuthorizationEngine.get()
 
@@ -33,7 +33,7 @@ def authorize(policy_name: str, resource: str) -> Callable[..., AuthorizationRes
         response = engine.is_authorized(
             policy_name=policy_name,
             resource=resource,
-            access_token=authorization,
+            access_token=f"{authorization.scheme} {authorization.credentials}",
             id_token=id_token,
             user_email=user_email,
         )
