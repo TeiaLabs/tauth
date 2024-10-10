@@ -2,20 +2,32 @@ package tauth.melt_key
 
 import rego.v1
 
-default is_valid_user = false
-default is_valid_admin = false
-default is_valid_superuser = false
+default is_user := false
 
-is_valid_user := true if {
-    input.infostar.authprovider_type == "melt-key"
+is_user if {
+	input.infostar.authprovider_type == "melt-key"
 }
 
-is_valid_admin := true if {
-    is_valid_user
-    input.infostar.apikey_name == "default"
+default is_admin := false
+
+is_admin if {
+	is_user
+	input.infostar.apikey_name == "default"
 }
 
-is_valid_superuser := true if {
-    is_valid_admin
-    input.infostar.authprovider_org == "/"
+default is_superuser := false
+
+is_superuser if {
+	is_admin
+	input.infostar.authprovider_org == "/"
+}
+
+default allow := {"authorized": false, "type": null}
+
+allow := {"authorized": true, "type": "superuser"} if {
+	is_superuser
+} else := {"authorized": true, "type": "admin"} if {
+	is_admin
+} else := {"authorized": true, "type": "user"} if {
+	is_user
 }
