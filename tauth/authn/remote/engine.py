@@ -25,7 +25,6 @@ class RequestAuthenticator:
             "X-User-Email": user_email,
         }
         headers = {k: v for k, v in headers.items() if v is not None}
-        print(Settings.get().AUTHN_ENGINE_SETTINGS.API_URL)
         response = cls.CLIENT.post("/authn", headers=headers)
         content = response.json()
         if response.status_code != s.HTTP_200_OK:
