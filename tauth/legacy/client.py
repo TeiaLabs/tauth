@@ -104,9 +104,7 @@ async def create_one(
             value=create_token(client_in.name, token_name),
         )
         token = creation.create_one(token, model=TokenDAO, infostar=infostar)
-        token_out = TokenCreationOut(
-            **token.model_dump(exclude={"created_by"}), created_by=creator
-        )
+        token_out = TokenCreationOut(**token.model_dump())
     except HTTPException as e:
         details = RequestValidationError(
             loc=["body", "name"],
