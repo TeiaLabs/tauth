@@ -52,7 +52,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: true
-          target: run
+          target: production
           ssh: default
           tags: "${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}"
 

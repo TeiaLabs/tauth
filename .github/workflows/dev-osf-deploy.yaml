@@ -40,7 +40,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: true
-          target: run
+          target: production
           tags: "${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
       - name: Force deployment to ECS
