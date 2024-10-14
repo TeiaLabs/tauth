@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tauth"
 authors = [{ name = "TeiaLabs", email = "contato@teialabs.com" }]
-description = "TeiaLabs Athena API"
+description = "TAuth API"
 readme = "README.md"
 requires-python = ">=3.12"
 dynamic = ["version"]
@@ -91,8 +91,8 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["--cov=athena", "--cov-report=html"]
+addopts = ["--cov=tauth", "--cov-report=html"]
 
 [tool.coverage.run]
-source = ["athena"]
+source = ["tauth"]
 omit = ["__main__.py", "__init__.py"]
