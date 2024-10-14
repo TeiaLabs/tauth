@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=60"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tauth-docs"
+authors = [{ name = "TeiaLabs", email = "contato@teialabs.com" }]
+description = "TAuth Documentation"
+readme = "README.md"
+requires-python = ">=3.12"
+version = "0.0.1"
+dependencies = [
+    "mkdocs-gen-files",
+    "mkdocs-literate-nav",
+    "mkdocs-material",
+    "mkdocs-section-index",
+    "mkdocs",
+    "mkdocstrings[python]",
+]
+
+[tool.uv]
+managed = true
+package = false
+
+[tool.uv.sources]

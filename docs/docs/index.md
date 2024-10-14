@@ -1,12 +1,12 @@
-# Example Project Documentation
+# TAuth - **T**eia **Auth**entication Service
 
-This is an example project to demonstrate the use of the documentation template.
+TAuth intro.
 
 ## Quick Links
 
 - [Installation](./getting_started/installation.md)
 - [Quick Start](./getting_started/quickstart.md)
 - [API Reference][tauth]
-- GitHub Repository
+- [GitHub Repository](https://github.com/teialabs/tauth)
 - PyPI Package
 - ...

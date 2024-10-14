@@ -1,14 +1,16 @@
-site_name: TAuth - Teia Authentication System
+site_name: TAuth - Teia Authentication and Authorization System
+docs_dir: ./docs
+dev_addr: !ENV TAUTH_DOCS_DEV_ADDRESS
 
 nav:
   - Home:
-    - "Introduction": introduction.md
+    - "Introduction": index.md
     - "Installation": getting_started/installation.md
     - "Quickstart": getting_started/quickstart.md
   - API Reference: "reference/"
 
 watch:
-  - tauth
+  - ../tauth
 
 markdown_extensions:
   - admonition
@@ -33,13 +35,13 @@ plugins:
   - section-index
   - gen-files:
       scripts:
-        - docs/scripts/gen_ref_pages.py
+        - ./scripts/gen_ref_pages.py
   - literate-nav:
       nav_file: SUMMARY.md
   - mkdocstrings:
       handlers:
         python:
-          paths: [.]
+          paths: [., ..]
           import:
             - https://docs.python.org/3/objects.inv
           options:

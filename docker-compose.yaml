@@ -21,6 +21,26 @@ services:
     tty: true
     stdin_open: true
 
+  docs:
+    container_name: tauth-docs
+    build:
+      context: ./
+      dockerfile: ./docs/Dockerfile
+      target: development
+    env_file: .env
+    ports:
+      - ${TAUTH_DOCS_DEV_PORT}:${TAUTH_DOCS_DEV_PORT}
+    develop:
+      watch:
+        - path: ./docs
+          action: sync
+          target: /app/docs
+        - path: ./tauth
+          action: sync
+          target: /app/tauth
+    tty: true
+    stdin_open: true
+
   mongodb:
     container_name: tauth-mongodb
     image: mongo:latest
