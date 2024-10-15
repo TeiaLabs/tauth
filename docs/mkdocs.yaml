@@ -4,9 +4,19 @@ dev_addr: !ENV TAUTH_DOCS_DEV_ADDRESS
 
 nav:
   - Home:
-    - "Introduction": index.md
-    - "Installation": getting_started/installation.md
-    - "Quickstart": getting_started/quickstart.md
+    - Introduction: index.md
+  - User Guide:
+    - Introduction: user_guide/index.md
+    - Installation: user_guide/installation.md
+    - Quickstart: user_guide/quickstart.md
+    - Concepts:
+      - Entities: user_guide/entity.md
+      - Infostar: user_guide/infostar.md
+      - Authentication: user_guide/authn.md
+      - Authorization: user_guide/authz.md
+  - Development Guide:
+    - Introduction: dev_guide/index.md
+    - Installation: dev_guide/installation.md
   - API Reference: "reference/"
 
 watch:

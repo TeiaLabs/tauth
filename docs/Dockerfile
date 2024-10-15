@@ -50,7 +50,7 @@ FROM build-base AS build-production
 # Install project dependencies 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
-# COPY ./tauth ./tauth
+COPY ./tauth ./tauth
 COPY ./docs ./docs
 RUN mkdocs build --verbose --config-file ./docs/mkdocs.yaml
 
