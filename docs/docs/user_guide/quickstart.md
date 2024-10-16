@@ -75,19 +75,83 @@ curl -X 'POST' \
   -d '{
     "handle": "/MyOrg",
     "type": "organization"
-  }'
+  }'  # (1)
 ```
+
+1. Substitute `MyOrg` with your organization's name.
 
 !!! tip
     The `handle` field is used to identify your organization.
     It **must** start with a forward slash for organization entities.
     For more information on entities, see the [entities section](./entity.md).
 
-Now that we have an organization, we can start configuring our authentication and authorization settings.
-
 ## Registering an AuthProvider
 
-TODO.
+Now that we have an organization, we can start configuring our authentication and authorization settings.
+We'll start by registering an authentication provider.
+TAuth supports a variety of authentication providers, including Auth0 and MELT keys (API keys managed by TAuth).
+
+!!! note
+    For a full list of supported authentication providers, see the [authentication page](./authn.md).
+
+We'll use the MELT Key provider and generate a new MELT Key for our organization and its users.
+To register an authentication provider, use the `POST /authproviders/` endpoint:
+
+```sh
+curl -X 'POST' \
+  'https://tauth.allai.digital/authproviders/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <API_KEY>' \
+  -d '{
+    "organization_name": "/MyOrg",
+    "type": "melt-key"
+  }'
+```
+
+For now, authentication providers must be linked to organization entities.
+This means that the `organization_name` field must be set to the handle of an organization entity.
+The `type` field specifies the type of authentication provider we want to register (in this case, a MELT Key provider).
+
+After registering the MELT key provider, we still need to actually create a MELT key for our organization.
+To achieve this, we'll use the `/clients` endpoint from the `legacy` section:
+
+```sh
+curl -X 'POST' \
+  'https://tauth.allai.digital/clients/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <API_KEY>' \
+  -d '{ "name": "/MyOrg" }'
+```
+
+You will then receive a MELT key named `default` for your organization as a response.
+
+!!! warning
+    Whenever you generate a key, you **must** copy its secret value.
+    It **cannot** be retrieved later.
+    The `name` field can be used to identify the key (and its usage) later.
+
+This key has administrator privileges in the organization.
+You can also create additional MELT keys with user privileges by using the `/keys` endpoint:
+
+```sh
+curl -X 'POST' \
+  'https://tauth.allai.digital/keys/' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer <API_KEY>' \
+  -d '{
+    "name": "<KEY_NAME>",
+    "organization_handle": "/MyOrg"
+  }'  # (1)
+```
+
+1. Replace `<KEY_NAME>` with the name of your key.
+
+This key can be used to authenticate users in your organization.
+
+Now, whenever a user wants to access our application (or we wish to authenticate the application itself), we can use these keys.
 
 ## Configuring Local Repository
 
