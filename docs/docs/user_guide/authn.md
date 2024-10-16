@@ -6,3 +6,4 @@
 - Headers
 - `/authn` endpoint
 - FastAPI middleware (`Depends`)
+- Environment variables
