@@ -195,6 +195,8 @@ After you include any authentication dependency in your application, your Swagge
 The endpoints that are protected will also include new header fields that specify the authentication requirements.
 You can use these input fields to place your MELT key and authenticate your requests.
 
+If a user is authenticated, you will receive an [Infostar][tauth.schemas.infostar] object, which is an object containing information on the authenticated user's entity and the authentication provider used.
+
 ## Authorization Basics
 
 TAuth uses a **policy-based** authorization system
