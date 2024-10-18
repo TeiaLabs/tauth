@@ -6,7 +6,7 @@ We go over the following topics:
 - [Authentication](#authentication)
   - [Python Project Setup](#python-project-setup)
   - [Request Headers](#request-headers)
-  - [Authorization Endpoint (`/authn`)](#authorization-endpoint-authn)
+  - [Authentication Endpoint (`/authn`)](#authentication-endpoint-authn)
   - [Authproviders](#authproviders)
     - [Auth0](#auth0)
     - [MELT Key](#melt-key)
@@ -32,7 +32,7 @@ Whether you're using TAuth via its REST API directly or including it in your Fas
 - `X-ID-Token`: This header should contain an OIDC ID token for an authentication provider that is registered in TAuth. This header is unecessary for API key providers.
 - `X-User-Email`: This header should contain the email address of the user that is being authenticated. This header is optional for OAuth2/OIDC providers, but is required for API key providers (specifically, MELT Key when using either a root or admin key).
 
-## Authorization Endpoint (`/authn`)
+## Authentication Endpoint (`/authn`)
 
 The `/authn` endpoint is the main authentication endpoint, and is used to authenticate users using the TAuth API.
 The endpoint does not accept any parameters, and instead relies on the aforementioned authentication headers.
