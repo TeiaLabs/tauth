@@ -47,4 +47,4 @@ def read_one(external_id_key: str, external_id_value: str):
             "msg": f"Organization with {external_id_key}={external_id_value} not found.",
         }
         raise HTTPException(status_code=404, detail=d)
-    return item
+    return OrganizationDAO(**item)
