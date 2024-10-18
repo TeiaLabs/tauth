@@ -25,9 +25,7 @@ class Auth0Settings(BaseSettings):
     def validate(self):
         return True
 
-    model_config = {
-        "extra": "ignore"
-    }
+    model_config = {"extra": "ignore", "env_file": ".env"}
 
 
 class ManyJSONKeyStore:
