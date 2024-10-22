@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+from collections.abc import Iterator
+from typing import Literal
 
 from pydantic import Field
 from pymongo import IndexModel
@@ -40,22 +41,54 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
         return idxs
 
     @classmethod
-    def from_handle(cls, handle: str) -> Optional["EntityDAO"]:
+    def from_handle(cls, handle: str) -> "EntityDAO | None":
         out = cls.collection(alias="tauth").find_one({"handle": handle})
         if out:
             return EntityDAO(**out)
 
     @classmethod
-    def from_handle_to_ref(cls, handle: str) -> Optional[EntityRef]:
+    def from_handle_to_ref(cls, handle: str) -> EntityRef | None:
         entity = cls.from_handle(handle)
         if entity:
-            return EntityRef(type=entity.type, handle=entity.handle, id=entity.id)
+            return EntityRef(type=entity.type, handle=entity.handle)
 
     def to_ref(self) -> EntityRef:
-        return EntityRef(type=self.type, handle=self.handle, id=self.id)
+        return EntityRef(type=self.type, handle=self.handle)
 
     def hashable_fields(self) -> list[str]:
-        l = [self.handle]
-        if self.owner_ref:
-            l.append(self.owner_ref.handle)
-        return l
+        fields = [self.handle]
+        return fields
+
+
+class EntityRelationshipsDAO(Document, Authoring, ReadingMixin, HashIdMixin):
+    origin: EntityRef
+    target: EntityRef
+    type: Literal["parent", "child"]
+
+    @classmethod
+    def collection_name(cls) -> str:
+        return "entities_relationships"
+
+    @classmethod
+    def indexes(cls) -> list[IndexModel]:
+        idxs = [
+            IndexModel("type"),
+            IndexModel("origin.handle"),
+            IndexModel("target.handle"),
+            IndexModel([("origin.handle", 1), ("target.handle", 1)], unique=True),
+        ]
+        return idxs
+
+    @classmethod
+    def from_origin(cls, handle: str) -> Iterator[EntityDAO]:
+        cursor = cls.collection(alias="tauth").find({"origin.handle": handle})
+        return map(lambda x: EntityDAO(**x), cursor)
+
+    @classmethod
+    def from_target(cls, handle: str) -> Iterator[EntityDAO]:
+        cursor = cls.collection(alias="tauth").find({"target.handle": handle})
+        return map(lambda x: EntityDAO(**x), cursor)
+
+    def hashable_fields(self) -> list[str]:
+        fields = [self.type, self.origin.handle, self.target.handle]
+        return fields
