@@ -18,8 +18,7 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     )  # e.g., url, azuread-id/auth0-id, ...
     extra: list[Attribute] = Field(default_factory=list)
     handle: str
-    owner_ref: Optional[EntityRef]
-    roles: list[RoleRef] = Field(default_factory=list)
+    role_refs: list[RoleRef] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]
 
     @classmethod
@@ -29,12 +28,13 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     @classmethod
     def indexes(cls) -> list[IndexModel]:
         idxs = [
-            IndexModel("roles.id"),
+            IndexModel("role_refs.id"),
+            IndexModel("handle"),
             IndexModel(
                 [("type", 1), ("handle", 1), ("owner_ref.handle", 1)], unique=True
             ),
             IndexModel(
-                [("type", 1), ("external_ids.name", 1), ("external_ids.value", 1)],
+                [("external_ids.name", 1), ("external_ids.value", 1)],
             ),
         ]
         return idxs
