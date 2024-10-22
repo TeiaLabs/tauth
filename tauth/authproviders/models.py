@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field
 from pymongo import IndexModel
@@ -41,7 +41,7 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
         ]
         return idxs
 
-    def get_external_id(self, name: str) -> Optional[str]:
+    def get_external_id(self, name: str) -> str | None:
         if not hasattr(self, "_ext_ids"):
             self._ext_ids = {item.name: item.value for item in self.external_ids}
         return self._ext_ids.get(name)
