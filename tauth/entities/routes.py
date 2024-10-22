@@ -1,6 +1,4 @@
-import re
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi import Path as PathParam
@@ -61,9 +59,9 @@ async def read_one(
 async def read_many(
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
-    name: Optional[str] = Query(None),
-    external_id_key: Optional[str] = Query(None, alias="external_ids.key"),
-    external_id_value: Optional[str] = Query(None, alias="external_ids.value"),
+    name: str | None = Query(None),
+    external_id_key: str | None = Query(None, alias="external_ids.key"),
+    external_id_value: str | None = Query(None, alias="external_ids.value"),
 ):
     orgs = reading.read_many(
         infostar=infostar,
@@ -74,15 +72,19 @@ async def read_many(
 
 
 @router.post("/{entity_id}/roles", status_code=s.HTTP_201_CREATED)
-@router.post("/{entity_id}/roles/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
+@router.post(
+    "/{entity_id}/roles/", status_code=s.HTTP_201_CREATED, include_in_schema=False
+)
 async def add_entity_role(
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
     entity_id: str = PathParam(),
-    role_id: Optional[PyObjectId] = Query(None),
-    role_name: Optional[str] = Query(None),
+    role_id: PyObjectId | None = Query(None),
+    role_name: str | None = Query(None),
 ):
-    logger.debug(f"Adding role (role_id={role_id!r}, role_name={role_name!r}) to entity {entity_id!r}.")
+    logger.debug(
+        f"Adding role (role_id={role_id!r}, role_name={role_name!r}) to entity {entity_id!r}."
+    )
     if not ((not role_id and role_name) or (role_id and not role_name)):
         raise HTTPException(
             status_code=s.HTTP_400_BAD_REQUEST,
@@ -105,15 +107,6 @@ async def add_entity_role(
         filters["_id"] = role_id
     elif role_name:
         filters["name"] = role_name
-    if entity.owner_ref:
-        logger.debug(f"Entity has owner_ref={entity.owner_ref!r}.")
-        entity_root_org = f"/{entity.owner_ref.handle.split("/")[1]}"
-        entity_root_org = re.escape(entity_root_org)
-        logger.debug(f"Entity's root organization: {entity_root_org!r}.")
-        filters["$or"] = [
-            {"entity_ref.handle": entity.handle},
-            {"entity_ref.handle": {"$regex": f"^{entity_root_org}"}},
-        ]
     else:
         filters["entity_ref.handle"] = entity.handle
     logger.debug(f"Filters to find role: {filters!r}.")
@@ -130,14 +123,14 @@ async def add_entity_role(
         )
     logger.debug(f"Role found: {role!r}.")
     # 409 in case the role is already attached
-    for r in entity.roles:
-        if r.id == role.id:
+    for r in entity.role_refs:
+        if r.name == role.name:
             raise HTTPException(
                 status_code=s.HTTP_409_CONFLICT,
                 detail=f"Role {role.name!r} already attached to entity {entity.handle!r}.",
             )
     # Add role to entity
-    role_ref = RoleRef(id=role.id, entity=role.entity_ref)
+    role_ref = RoleRef(name=role.name, entity_ref=role.entity_ref)
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity.id},
@@ -146,9 +139,10 @@ async def add_entity_role(
     logger.debug(f"Update result: {res!r}.")
     return {
         "msg": "Role added to entity.",
-        "role_id": str(role.id),
+        "role_name": str(role.name),
         "entity_id": str(entity.id),
     }
+
 
 @router.delete(
     "/{entity_id}/roles/{role_id}",
