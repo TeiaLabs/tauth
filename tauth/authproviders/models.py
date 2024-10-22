@@ -19,7 +19,7 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
         default_factory=list
     )  # url, client_id, client_secret
     organization_ref: OrganizationRef
-    service_ref: Optional[ServiceRef]  # TODO: AZP claim
+    service_ref: ServiceRef
     type: Literal["auth0", "melt-key", "tauth-key"]
 
     @classmethod
