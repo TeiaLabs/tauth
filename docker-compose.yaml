@@ -21,6 +21,16 @@ services:
     tty: true
     stdin_open: true
 
+  tauth-debug:
+    container_name: tauth-debug
+    extends:
+      service: tauth
+    ports:
+      - 5678:5678
+    build:
+      context: ./
+      target: debug
+
   docs:
     container_name: tauth-docs
     build:
