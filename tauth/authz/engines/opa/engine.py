@@ -4,12 +4,18 @@ from fastapi import HTTPException
 from fastapi import status as s
 from loguru import logger
 from opa_client import OpaClient
-from opa_client.errors import ConnectionsError, DeletePolicyError, RegoParseError
+from opa_client.errors import (
+    ConnectionsError,
+    DeletePolicyError,
+    PolicyNotFoundError,
+    RegoParseError,
+)
 from redbaby.pyobjectid import PyObjectId
 
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
 from ...policies.schemas import AuthorizationPolicyIn
+from ..errors import PermissionNotFound
 from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import OPASettings
 
@@ -51,7 +57,9 @@ class OPAEngine(AuthorizationInterface):
     def _initialize_default_policies(self):
         logger.debug("Inserting default policies")
         for name, policy_data in DEFAULT_POLICIES.items():
-            logger.debug(f"Loading policy: {name!r} from {policy_data['path']!r}.")
+            logger.debug(
+                f"Loading policy: {name!r} from {policy_data['path']!r}."
+            )
             policy_content = policy_data["path"].read_text()
             policy = AuthorizationPolicyIn(
                 name=name,
@@ -76,16 +84,23 @@ class OPAEngine(AuthorizationInterface):
         opa_context = dict(input={})
         if context:
             opa_context |= context
-        opa_result = self.client.check_permission(
-            input_data=opa_context,
-            policy_name=policy_name,
-            rule_name=resource,
-        )
+        try:
+            opa_result = self.client.check_permission(
+                input_data=opa_context,
+                policy_name=policy_name,
+                rule_name=resource,
+            )
+        except PolicyNotFoundError as e:
+            logger.error(f"Policy not found in OPA: {e}")
+            raise PermissionNotFound(f"Policy {policy_name} not found")
+
         logger.debug(f"Raw OPA result: {opa_result}")
         # TODO: we should be careful here and revisit this soon
         # if the result is an object, the app should check this
         authorized = (
-            opa_result["result"] if isinstance(opa_result["result"], bool) else True
+            opa_result["result"]
+            if isinstance(opa_result["result"], bool)
+            else True
         )
         res = AuthorizationResponse(
             authorized=authorized,
@@ -93,7 +108,9 @@ class OPAEngine(AuthorizationInterface):
         )
         return res
 
-    def upsert_policy(self, policy_name: str, policy_content: str, **_) -> bool:
+    def upsert_policy(
+        self, policy_name: str, policy_content: str, **_
+    ) -> bool:
         logger.debug(f"Upserting policy {policy_name!r} in OPA.")
         try:
             result = self.client.update_policy_from_string(
