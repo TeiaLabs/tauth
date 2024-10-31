@@ -4,8 +4,10 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 
+from ..authz.engines.errors import PermissionNotFound
 from ..authz.engines.factory import AuthorizationEngine
 from ..entities.models import EntityDAO
+from ..utils.errors import EngineException
 from .policies.schemas import AuthorizationDataIn
 
 service_name = Path(__file__).parent.name
@@ -39,10 +41,27 @@ async def authorize(
 
     logger.debug("Executing authorization logic.")
     # TODO: determine if we're gonna support arbitrary outputs here (e.g., filters)
-    result = authz_engine.is_authorized(
-        policy_name=authz_data.policy_name,
-        resource=authz_data.resource,
-        context=authz_data.context,
-    )
+    try:
+        result = authz_engine.is_authorized(
+            policy_name=authz_data.policy_name,
+            resource=authz_data.resource,
+            context=authz_data.context,
+        )
+    except EngineException as e:
+        handle_errors(e)
+
     logger.debug(f"Authorization result: {result}.")
     return result.model_dump(mode="json")
+
+
+def handle_errors(e: EngineException):
+    if isinstance(e, PermissionNotFound):
+        raise HTTPException(
+            status_code=s.HTTP_404_NOT_FOUND,
+            detail=dict(msg=str(e)),
+        )
+    logger.error(f"Unhandled engine error: {str(e)}")
+    raise HTTPException(
+        status_code=s.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=dict(msg=f"Unhandled engine error: {str(e)}"),
+    )

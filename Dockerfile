@@ -68,6 +68,9 @@ COPY ./tauth ./tauth
 FROM local AS development
 CMD ["python", "-m", "tauth"]
 
+FROM local AS debug
+CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "tauth"]
+
 FROM local AS test
 COPY ./tests ./tests
 CMD ["python", "-m", "pytest", "-v"]

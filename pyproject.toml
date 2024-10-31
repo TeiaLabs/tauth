@@ -43,6 +43,7 @@ package = true
 cache-keys = [{ file = "pyproject.toml" }, { git = true }]
 reinstall-package = ["my-package"]
 dev-dependencies = [
+    "debugpy>=1.8.7",
     "mypy>=1.11.1",
     "pytest-asyncio>=0.23.8",
     "pytest-cov>=5.0.0",
