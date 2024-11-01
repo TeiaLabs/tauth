@@ -29,7 +29,7 @@ class RemoteEngine(AuthorizationInterface):
     def is_authorized(
         self,
         policy_name: str,
-        resource: str,
+        rule: str,
         access_token: str,
         id_token: str | None = None,
         user_email: str | None = None,
@@ -49,7 +49,7 @@ class RemoteEngine(AuthorizationInterface):
         body = {
             "context": context,
             "policy_name": policy_name,
-            "resource": resource,
+            "rule": rule,
         }
         body = {k: v for k, v in body.items() if v is not None}
         response = self.client.post("/authz", headers=headers, json=body)
@@ -96,7 +96,10 @@ class RemoteEngine(AuthorizationInterface):
             headers=headers,
             json=body,
         )
-        if response.status_code not in (s.HTTP_201_CREATED, s.HTTP_204_NO_CONTENT):
+        if response.status_code not in (
+            s.HTTP_201_CREATED,
+            s.HTTP_204_NO_CONTENT,
+        ):
             details = response.json()
             logger.warning(f"Failed to upsert policy remotely: {details}")
             return False

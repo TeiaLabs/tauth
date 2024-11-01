@@ -14,7 +14,8 @@ class AuthorizationPolicyIn(BaseModel):
 class AuthorizationDataIn(BaseModel):
     context: dict
     policy_name: str
-    resource: str
+    rule: str
+    service_handle: str | None = None
 
 
 POLICY_EXAMPLES = {

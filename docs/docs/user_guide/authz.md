@@ -74,7 +74,7 @@ curl -X POST \
   -H 'X-User-Email: <user_email>' \
   -d '{
     "policy_name": "string",
-    "resource": "string",
+    "rule": "string",
     "context": {}
   }'
 ```

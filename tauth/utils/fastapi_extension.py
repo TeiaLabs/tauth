@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Depends, Header, HTTPException, Security
 from fastapi import status as s
@@ -27,13 +27,17 @@ def get_depends():
     return Depends(RequestAuthenticator.validate)
 
 
-def authorize(policy_name: str, resource: str) -> Callable[..., AuthorizationResponse]:
+def authorize(
+    policy_name: str, resource: str
+) -> Callable[..., AuthorizationResponse]:
     AuthorizationEngine.setup()
     engine = AuthorizationEngine.get()
 
     def wrap(
         user_email: str | None = Header(
-            default=None, alias="X-User-Email", description="Ignore when using OAuth."
+            default=None,
+            alias="X-User-Email",
+            description="Ignore when using OAuth.",
         ),
         id_token: str | None = Header(
             default=None, alias="X-ID-Token", description="Auth0 ID token."
@@ -44,7 +48,7 @@ def authorize(policy_name: str, resource: str) -> Callable[..., AuthorizationRes
     ):
         response = engine.is_authorized(
             policy_name=policy_name,
-            resource=resource,
+            rule=resource,
             access_token=authorization,
             id_token=id_token,
             user_email=user_email,

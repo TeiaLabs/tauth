@@ -77,7 +77,7 @@ class OPAEngine(AuthorizationInterface):
     def is_authorized(
         self,
         policy_name: str,
-        resource: str,
+        rule: str,
         context: dict | None = None,
         **kwargs,
     ) -> AuthorizationResponse:
@@ -88,7 +88,7 @@ class OPAEngine(AuthorizationInterface):
             opa_result = self.client.check_permission(
                 input_data=opa_context,
                 policy_name=policy_name,
-                rule_name=resource,
+                rule_name=rule,
             )
         except Exception as e:
             logger.error(f"Error in OPA: {e}")
