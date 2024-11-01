@@ -7,8 +7,7 @@ from ..permissions.schemas import PermissionOut
 
 
 class RoleRef(BaseModel):
-    name: str
-    entity_ref: EntityRef
+    id: PyObjectId
 
 
 class RoleIn(BaseModel):

@@ -37,7 +37,9 @@ async def create_one(
 
 
 @router.post("/{entity_id}", status_code=s.HTTP_200_OK)
-@router.post("/{entitiy_id}/", status_code=s.HTTP_200_OK, include_in_schema=False)
+@router.post(
+    "/{entitiy_id}/", status_code=s.HTTP_200_OK, include_in_schema=False
+)
 async def read_one(
     entity_id: str,
     infostar: Infostar = Depends(privileges.is_valid_user),
@@ -73,7 +75,9 @@ async def read_many(
 
 @router.post("/{entity_id}/roles", status_code=s.HTTP_201_CREATED)
 @router.post(
-    "/{entity_id}/roles/", status_code=s.HTTP_201_CREATED, include_in_schema=False
+    "/{entity_id}/roles/",
+    status_code=s.HTTP_201_CREATED,
+    include_in_schema=False,
 )
 async def add_entity_role(
     request: Request,
@@ -123,14 +127,16 @@ async def add_entity_role(
         )
     logger.debug(f"Role found: {role!r}.")
     # 409 in case the role is already attached
-    for r in entity.role_refs:
+    for role_ref in entity.role_refs:
+        r = RoleDAO.from_ref(role_ref)
+        assert r
         if r.name == role.name:
             raise HTTPException(
                 status_code=s.HTTP_409_CONFLICT,
                 detail=f"Role {role.name!r} already attached to entity {entity.handle!r}.",
             )
     # Add role to entity
-    role_ref = RoleRef(name=role.name, entity_ref=role.entity_ref)
+    role_ref = RoleRef(id=role.id)
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity.id},

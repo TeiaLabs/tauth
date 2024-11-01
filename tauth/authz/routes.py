@@ -4,6 +4,8 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 
+from tauth.schemas.infostar import Infostar
+
 from ..authz.engines.errors import PermissionNotFound
 from ..authz.engines.factory import AuthorizationEngine
 from ..entities.models import EntityDAO
@@ -20,7 +22,7 @@ async def authorize(
     request: Request,
     authz_data: AuthorizationDataIn = Body(),
 ) -> dict:
-    infostar = request.state.infostar
+    infostar: Infostar = request.state.infostar
     logger.debug(f"Running authorization for user: {infostar}")
     logger.debug(f"Authorization data: {authz_data}")
 

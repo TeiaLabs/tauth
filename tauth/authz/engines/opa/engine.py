@@ -15,7 +15,7 @@ from redbaby.pyobjectid import PyObjectId
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
 from ...policies.schemas import AuthorizationPolicyIn
-from ..errors import PermissionNotFound
+from ..errors import EngineException, PermissionNotFound
 from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import OPASettings
 
@@ -90,9 +90,12 @@ class OPAEngine(AuthorizationInterface):
                 policy_name=policy_name,
                 rule_name=resource,
             )
-        except PolicyNotFoundError as e:
-            logger.error(f"Policy not found in OPA: {e}")
-            raise PermissionNotFound(f"Policy {policy_name} not found")
+        except Exception as e:
+            logger.error(f"Error in OPA: {e}")
+            if isinstance(e, PolicyNotFoundError):
+                raise PermissionNotFound(f"Policy {policy_name} not found")
+            else:
+                raise EngineException(f"Error during authorization check {e}")
 
         logger.debug(f"Raw OPA result: {opa_result}")
         # TODO: we should be careful here and revisit this soon

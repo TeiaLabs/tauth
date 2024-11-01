@@ -80,8 +80,12 @@ Indices:
     "_id": "...",
     "service": "datasources",
     "collection": "prompts",
-    "role": "mygroup",
+    "role": "mygroup_id",
     "ids": ["ds1", "ds2", ...],
+    "metadata": {
+      "alias": "osf",
+      "other": "..."
+    }
 }
 ```
 

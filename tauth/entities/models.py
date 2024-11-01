@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import Field
 from pymongo import IndexModel
@@ -19,7 +19,8 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     )  # e.g., url, azuread-id/auth0-id, ...
     extra: list[Attribute] = Field(default_factory=list)
     handle: str
-    role_refs: list[RoleRef] = Field(default_factory=list)
+    owner_ref: EntityRef | None = None
+    roles: list[RoleRef] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]
 
     @classmethod
@@ -29,19 +30,23 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     @classmethod
     def indexes(cls) -> list[IndexModel]:
         idxs = [
-            IndexModel("role_refs.id"),
-            IndexModel("handle"),
+            IndexModel("roles.id"),
             IndexModel(
-                [("type", 1), ("handle", 1), ("owner_ref.handle", 1)], unique=True
+                [("type", 1), ("handle", 1), ("owner_ref.handle", 1)],
+                unique=True,
             ),
             IndexModel(
-                [("external_ids.name", 1), ("external_ids.value", 1)],
+                [
+                    ("type", 1),
+                    ("external_ids.name", 1),
+                    ("external_ids.value", 1),
+                ],
             ),
         ]
         return idxs
 
     @classmethod
-    def from_handle(cls, handle: str) -> "EntityDAO | None":
+    def from_handle(cls, handle: str) -> Optional["EntityDAO"]:
         out = cls.collection(alias="tauth").find_one({"handle": handle})
         if out:
             return EntityDAO(**out)
@@ -75,7 +80,9 @@ class EntityRelationshipsDAO(Document, Authoring, ReadingMixin, HashIdMixin):
             IndexModel("type"),
             IndexModel("origin.handle"),
             IndexModel("target.handle"),
-            IndexModel([("origin.handle", 1), ("target.handle", 1)], unique=True),
+            IndexModel(
+                [("origin.handle", 1), ("target.handle", 1)], unique=True
+            ),
         ]
         return idxs
 
