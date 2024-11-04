@@ -11,11 +11,16 @@ class AuthorizationPolicyIn(BaseModel):
     type: Literal["opa"]
 
 
+class ResourceAuthorizationRequest(BaseModel):
+    service_handle: str
+    resource_collection: str
+
+
 class AuthorizationDataIn(BaseModel):
     context: dict
     policy_name: str
     rule: str
-    service_handle: str | None = None
+    resources: ResourceAuthorizationRequest | None = None
 
 
 POLICY_EXAMPLES = {

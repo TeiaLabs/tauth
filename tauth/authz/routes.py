@@ -4,11 +4,13 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 
+from tauth.authz.permissions.controllers import read_permissions_from_roles
 from tauth.schemas.infostar import Infostar
 
 from ..authz.engines.errors import PermissionNotFound
 from ..authz.engines.factory import AuthorizationEngine
 from ..entities.models import EntityDAO
+from ..resources.controllers import read_many as get_resources
 from ..utils.errors import EngineException
 from .policies.schemas import AuthorizationDataIn
 
@@ -40,13 +42,42 @@ async def authorize(
         )
     logger.debug(f"Entity found: {entity}.")
     authz_data.context["entity"] = entity.model_dump(mode="json")
+    role_ids = map(lambda x: x.id, entity.roles)
+    permissions = read_permissions_from_roles(role_ids)
+    authz_data.context["permissions"] = [
+        permission.model_dump(mode="json") for permission in permissions
+    ]
+
+    if authz_data.resources:
+        logger.debug(
+            f"Getting resources for service: {authz_data.resources.service_handle}."
+        )
+        service = EntityDAO.from_handle(
+            handle=authz_data.resources.service_handle
+        )
+        if not service:
+            message = f"Entity not found for handle: {authz_data.resources.service_handle}."
+            logger.error(message)
+            raise HTTPException(
+                status_code=s.HTTP_401_UNAUTHORIZED,
+                detail=dict(msg=message),
+            )
+        resources = get_resources(
+            infostar=infostar,
+            role_ids=list(role_ids),
+            service_handle=authz_data.resources.service_handle,
+            resource_collection=authz_data.resources.resource_collection,
+        )
+        authz_data.context["resources"] = [
+            resource.model_dump(mode="json") for resource in resources
+        ]
 
     logger.debug("Executing authorization logic.")
     # TODO: determine if we're gonna support arbitrary outputs here (e.g., filters)
     try:
         result = authz_engine.is_authorized(
             policy_name=authz_data.policy_name,
-            resource=authz_data.resource,
+            rule=authz_data.rule,
             context=authz_data.context,
         )
     except EngineException as e:

@@ -127,7 +127,7 @@ async def add_entity_role(
         )
     logger.debug(f"Role found: {role!r}.")
     # 409 in case the role is already attached
-    for role_ref in entity.role_refs:
+    for role_ref in entity.roles:
         r = RoleDAO.from_ref(role_ref)
         assert r
         if r.name == role.name:

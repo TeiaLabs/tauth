@@ -8,13 +8,14 @@ from redbaby.document import Document
 from ..authz.roles.schemas import RoleRef
 from ..entities.schemas import EntityRef
 from ..utils.teia_behaviors import Authoring
+from .schemas import Identifier
 
 
 class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     service_ref: EntityRef
     role_ref: RoleRef
     resource_collection: str
-    ids: list[str]
+    ids: list[Identifier]
     metadata: dict[str, Any]
 
     @classmethod
@@ -34,5 +35,6 @@ class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
             ),
             IndexModel([("service_ref.handle", 1)]),
             IndexModel([("role_ref.name", 1)]),
+            IndexModel([("ids", 1)]),
         ]
         return idxs

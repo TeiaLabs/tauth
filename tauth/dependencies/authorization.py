@@ -21,7 +21,9 @@ def authorize(
 
     def wrap(
         user_email: str | None = Header(
-            default=None, alias="X-User-Email", description="Ignore when using OAuth."
+            default=None,
+            alias="X-User-Email",
+            description="Ignore when using OAuth.",
         ),
         id_token: str | None = Header(
             default=None, alias="X-ID-Token", description="Auth0 ID token."
@@ -32,7 +34,7 @@ def authorize(
     ):
         response = engine.is_authorized(
             policy_name=policy_name,
-            resource=resource,
+            rule=resource,
             access_token=f"{authorization.scheme} {authorization.credentials}",
             id_token=id_token,
             user_email=user_email,

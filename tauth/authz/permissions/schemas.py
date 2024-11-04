@@ -1,7 +1,6 @@
-from typing import Optional
-
 from fastapi.openapi.models import Example
 from pydantic import BaseModel
+from redbaby.pyobjectid import PyObjectId
 
 from ...entities.schemas import EntityRef
 
@@ -41,9 +40,9 @@ class PermissionOut(BaseModel):
 
 
 class PermissionUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    entity_handle: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
+    entity_handle: str | None = None
 
     @staticmethod
     def get_permission_update_examples():
@@ -67,3 +66,9 @@ class PermissionIntermediate(BaseModel):
     name: str
     description: str
     entity_ref: EntityRef
+
+
+class PermissionContext(BaseModel):
+    name: str
+    entity_handle: str
+    role_id: PyObjectId
