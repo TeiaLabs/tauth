@@ -4,13 +4,13 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 
-from tauth.authz.permissions.controllers import read_permissions_from_roles
+from tauth.authz.permissions.controllers import get_permissions_set
 from tauth.schemas.infostar import Infostar
 
 from ..authz.engines.errors import PermissionNotFound
 from ..authz.engines.factory import AuthorizationEngine
 from ..entities.models import EntityDAO
-from ..resources.controllers import read_many as get_resources
+from ..resources.controllers import get_context_resources
 from ..utils.errors import EngineException
 from .policies.schemas import AuthorizationDataIn
 
@@ -43,7 +43,7 @@ async def authorize(
     logger.debug(f"Entity found: {entity}.")
     authz_data.context["entity"] = entity.model_dump(mode="json")
     role_ids = map(lambda x: x.id, entity.roles)
-    permissions = read_permissions_from_roles(role_ids)
+    permissions = get_permissions_set(role_ids)
     authz_data.context["permissions"] = [
         permission.model_dump(mode="json") for permission in permissions
     ]
@@ -62,7 +62,7 @@ async def authorize(
                 status_code=s.HTTP_401_UNAUTHORIZED,
                 detail=dict(msg=message),
             )
-        resources = get_resources(
+        resources = get_context_resources(
             infostar=infostar,
             role_ids=list(role_ids),
             service_handle=authz_data.resources.service_handle,

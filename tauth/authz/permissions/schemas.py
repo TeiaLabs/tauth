@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi.openapi.models import Example
 from pydantic import BaseModel
 from redbaby.pyobjectid import PyObjectId
@@ -72,3 +74,15 @@ class PermissionContext(BaseModel):
     name: str
     entity_handle: str
     role_id: PyObjectId
+
+    def __hash__(self):
+        return hash((self.name, self.entity_handle))
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, PermissionContext):
+            # Equality based on name and entity_handle
+            return (self.name, self.entity_handle) == (
+                other.name,
+                other.entity_handle,
+            )
+        return False

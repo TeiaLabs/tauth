@@ -9,7 +9,7 @@ from .schemas import PermissionContext
 
 def read_permissions_from_roles(
     roles: Iterable[PyObjectId],
-) -> dict[str, list[PermissionContext]]:
+) -> dict[PyObjectId, list[PermissionContext]]:
 
     pipeline = [
         {"$match": {"_id": {"$in": list(roles)}}},
@@ -51,3 +51,10 @@ def read_permissions_from_roles(
         ]
 
     return return_dict
+
+
+def get_permissions_set(roles: Iterable[PyObjectId]) -> set[PermissionContext]:
+    permissions = read_permissions_from_roles(roles)
+    return set(
+        context for contexts in permissions.values() for context in contexts
+    )

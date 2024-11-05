@@ -41,8 +41,6 @@ def get_context_resources(
     roles = [r.role_ref.id for r in resources]
     permissions = read_permissions_from_roles(roles)
 
-    permission_map = {context.role_id: context for context in permissions}
-
     resource_context: list[ResourceContext] = []
     for resource in resources:
         obj = ResourceContext(
@@ -50,5 +48,8 @@ def get_context_resources(
             resource_collection=resource.resource_collection,
             ids=resource.ids,
             metadata=resource.metadata,
-            permissions=permission_map[resource.role_ref.id],
+            permissions=permissions[resource.role_ref.id],
         )
+        resource_context.append(obj)
+
+    return resource_context
