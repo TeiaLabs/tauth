@@ -41,6 +41,20 @@ async def create_one(
     if org_ref is None:
         raise ValueError(f"Organization {body.organization_name} not found.")
     org_ref = OrganizationRef(**org_ref.model_dump())
+
+    if body.external_ids:
+        existing_providers = reading.read_many(
+            infostar=infostar, model=AuthProviderDAO, external_ids=body.external_ids
+        )
+        if existing_providers:
+            raise HTTPException(
+                status_code=s.HTTP_409_CONFLICT,
+                detail=(
+                    f"External IDs {body.external_ids} "
+                    "already exist in an existing auth provider."
+                ),
+            )
+
     in_schema = AuthProviderMoreIn(
         **body.model_dump(),
         service_ref=service_ref,
