@@ -12,6 +12,9 @@ from opa_client.errors import (
 )
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.authz.policies.models import AuthorizationPolicyDAO
+from tauth.utils import reading
+
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
 from ...policies.schemas import AuthorizationPolicyIn
@@ -73,6 +76,28 @@ class OPAEngine(AuthorizationInterface):
                 if e.status_code != s.HTTP_409_CONFLICT:
                     raise e
                 logger.debug(f"Policy {name} already exists. Skipping.")
+
+    def _initialize_db_policies(self):
+        policies = reading.read_many(infostar={}, model=AuthorizationPolicyDAO)
+        logger.info(
+            f"Loading DB policies into OPA. Policies loaded: {len(policies)}"
+        )
+
+        for policy in policies:
+            policy_in = AuthorizationPolicyIn(
+                name=policy.name,
+                description=policy.description,
+                policy=policy.policy,
+                type=policy.type,
+            )
+            try:
+                upsert_one(policy_in, SYSTEM_INFOSTAR)
+            except HTTPException as e:
+                if e.status_code != s.HTTP_409_CONFLICT:
+                    raise e
+                logger.debug(
+                    f"Policy {policy_in.name} already exists. Skipping."
+                )
 
     def is_authorized(
         self,
