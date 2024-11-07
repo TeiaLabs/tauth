@@ -10,7 +10,7 @@ from tauth.schemas.infostar import Infostar
 from ..authz.engines.errors import PermissionNotFound
 from ..authz.engines.factory import AuthorizationEngine
 from ..entities.models import EntityDAO
-from ..resources.controllers import get_context_resources
+from ..resource_management.resources.controllers import get_context_resources
 from ..utils.errors import EngineException
 from .policies.schemas import AuthorizationDataIn
 

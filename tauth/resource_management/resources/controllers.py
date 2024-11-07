@@ -1,22 +1,19 @@
 from redbaby.pyobjectid import PyObjectId
 
-from tauth.resources.models import ResourceDAO
+from tauth.resource_management.resources.models import ResourceDAO
 from tauth.schemas.infostar import Infostar
 from tauth.utils import reading
 
-from ..authz.permissions.controllers import read_permissions_from_roles
+from ...authz.permissions.controllers import read_permissions_from_roles
 from .schemas import ResourceContext
 
 
 def read_many(
     infostar: Infostar,
-    role_ids: list[PyObjectId] | None,
     service_handle: str | None,
     resource_collection: str | None,
 ) -> list[ResourceDAO]:
     filters = {}
-    if role_ids:
-        filters["role_ref.id"] = {"$in": role_ids}
     if service_handle:
         filters["service_ref.handle"] = service_handle
     if resource_collection:
@@ -33,12 +30,10 @@ def get_context_resources(
 ):
     resources = read_many(
         infostar=infostar,
-        role_ids=role_ids,
         service_handle=service_handle,
         resource_collection=resource_collection,
     )
 
-    roles = [r.role_ref.id for r in resources]
     permissions = read_permissions_from_roles(roles)
 
     resource_context: list[ResourceContext] = []

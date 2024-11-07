@@ -6,20 +6,18 @@ from loguru import logger
 from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
-from ..authz import privileges
-from ..authz.roles.models import RoleDAO
-from ..authz.roles.schemas import RoleRef
-from ..entities.models import EntityDAO
-from ..schemas import Infostar
-from ..schemas.gen_fields import GeneratedFields
-from ..settings import Settings
-from ..utils import reading
+from ...authz import privileges
+from ...entities.models import EntityDAO
+from ...schemas import Infostar
+from ...schemas.gen_fields import GeneratedFields
+from ...settings import Settings
+from ...utils import reading
 from . import controllers
 from .models import ResourceDAO
 from .schemas import ResourceIn, ResourceUpdate
 
-service_name = Path(__file__).parent.name
-router = APIRouter(prefix=f"/{service_name}", tags=[service_name])
+service_name = Path(__file__).parents[1].name
+router = APIRouter(prefix=f"/{service_name}/resources", tags=[service_name])
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)
@@ -30,23 +28,7 @@ async def create_one(
     ),
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
-    """
-    Your entity handle needs to be the owner of the role you want
-    """
-    role_owner_entity = EntityDAO.from_handle(body.entity_handle)
-    if not role_owner_entity:
-        raise HTTPException(
-            status_code=s.HTTP_404_NOT_FOUND,
-            detail=f"Entity with handle {body.entity_handle} not found",
-        )
-    role = RoleDAO.from_name(
-        name=body.role_name, entity_handle=role_owner_entity.handle
-    )
-    if not role:
-        raise HTTPException(
-            status_code=s.HTTP_404_NOT_FOUND,
-            detail=f"Role with name {body.role_name} not found",
-        )
+
     service_entity = EntityDAO.from_handle(body.service_handle)
     if not service_entity:
         raise HTTPException(
@@ -55,9 +37,7 @@ async def create_one(
         )
 
     try:
-        role_ref = RoleRef(id=role.id)
         item = ResourceDAO(
-            role_ref=role_ref,
             created_by=infostar,
             service_ref=service_entity.to_ref(),
             **body.model_dump(exclude={"entity_handle", "role_name"}),
@@ -79,7 +59,6 @@ async def create_one(
 async def read_many(
     infostar: Infostar = Depends(privileges.is_valid_user),
     service_handle: str | None = Query(None),
-    role_ids: list[str] | None = Query(None),
     resource_collection: str | None = Query(None),
 ) -> list[ResourceDAO]:
     logger.debug(f"Reading many Resources for {infostar.user_handle}")
@@ -87,9 +66,6 @@ async def read_many(
     return controllers.read_many(
         infostar=infostar,
         service_handle=service_handle,
-        role_ids=(
-            list(map(lambda x: PyObjectId(x), role_ids)) if role_ids else None
-        ),
         resource_collection=resource_collection,
     )
 

@@ -5,15 +5,13 @@ from redbaby.behaviors.objectids import ObjectIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
 
-from ..authz.roles.schemas import RoleRef
-from ..entities.schemas import EntityRef
-from ..utils.teia_behaviors import Authoring
+from ...entities.schemas import EntityRef
+from ...utils.teia_behaviors import Authoring
 from .schemas import Identifier
 
 
 class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     service_ref: EntityRef
-    role_ref: RoleRef
     resource_collection: str
     ids: list[Identifier]
     metadata: dict[str, Any]

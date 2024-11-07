@@ -11,7 +11,7 @@ from .authz.roles.routes import router as roles_router
 from .authz.routes import router as authorization_router
 from .entities import router as entities_router
 from .legacy import client, tokens
-from .resources import router as resources_router
+from .resource_management.resources import router as resources_router
 from .settings import Settings
 
 

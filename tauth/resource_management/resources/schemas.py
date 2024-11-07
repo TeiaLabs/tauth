@@ -5,7 +5,7 @@ from pydantic.config import ConfigDict
 
 from tauth.entities.schemas import EntityRef
 
-from ..authz.permissions.schemas import PermissionContext
+from ...authz.permissions.schemas import PermissionContext
 
 
 class Identifier(BaseModel):
@@ -15,8 +15,6 @@ class Identifier(BaseModel):
 
 class ResourceIn(BaseModel):
     service_handle: str
-    role_name: str
-    entity_handle: str
     resource_collection: str
     ids: list[Identifier]
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -30,8 +28,6 @@ class ResourceIn(BaseModel):
                         "description": "Thread shared between users",
                         "value": {
                             "service_handle": "/athena-api",
-                            "role_name": "share_thread",
-                            "entity_handle": "/my-group",
                             "resource_collection": "threads",
                             "ids": [
                                 {
