@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import HTTPException
 from fastapi import status as s
 from loguru import logger
@@ -21,15 +19,6 @@ from ...policies.schemas import AuthorizationPolicyIn
 from ..errors import PermissionNotFound
 from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import OPASettings
-
-PATH_POLICIES = Path(__file__).parents[4] / "resources" / "policies"
-
-DEFAULT_POLICIES = {
-    "melt-key": {
-        "path": PATH_POLICIES / "melt-key.rego",
-        "description": "MELT API Key privilege levels.",
-    },
-}
 
 SYSTEM_INFOSTAR = Infostar(
     request_id=PyObjectId(),
@@ -56,26 +45,6 @@ class OPAEngine(AuthorizationInterface):
             logger.error(f"Failed to establish connection with OPA: {e}")
             raise e
         logger.debug("OPA Engine is running.")
-
-    def _initialize_default_policies(self):
-        logger.debug("Inserting default policies")
-        for name, policy_data in DEFAULT_POLICIES.items():
-            logger.debug(
-                f"Loading policy: {name!r} from {policy_data['path']!r}."
-            )
-            policy_content = policy_data["path"].read_text()
-            policy = AuthorizationPolicyIn(
-                name=name,
-                description=policy_data["description"],
-                policy=policy_content,
-                type="opa",
-            )
-            try:
-                upsert_one(policy, SYSTEM_INFOSTAR)
-            except HTTPException as e:
-                if e.status_code != s.HTTP_409_CONFLICT:
-                    raise e
-                logger.debug(f"Policy {name} already exists. Skipping.")
 
     def _initialize_db_policies(self):
         policies = reading.read_many(
