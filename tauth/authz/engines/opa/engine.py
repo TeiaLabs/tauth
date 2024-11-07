@@ -78,7 +78,9 @@ class OPAEngine(AuthorizationInterface):
                 logger.debug(f"Policy {name} already exists. Skipping.")
 
     def _initialize_db_policies(self):
-        policies = reading.read_many(infostar={}, model=AuthorizationPolicyDAO)
+        policies = reading.read_many(
+            infostar=SYSTEM_INFOSTAR, model=AuthorizationPolicyDAO
+        )
         logger.info(
             f"Loading DB policies into OPA. Policies loaded: {len(policies)}"
         )
