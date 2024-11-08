@@ -72,7 +72,7 @@ class EntityRelationshipsDAO(Document, Authoring, ReadingMixin, HashIdMixin):
 
     @classmethod
     def collection_name(cls) -> str:
-        return "entities_relationships"
+        return "entities-relationships"
 
     @classmethod
     def indexes(cls) -> list[IndexModel]:

@@ -1,48 +1,75 @@
+import asyncio
 from collections.abc import Callable
 
-from fastapi import Header, HTTPException, Security
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+)
 from fastapi import status as s
-from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
+from fastapi.security import HTTPAuthorizationCredentials
+
+from tauth.authn.routes import authenticate
+from tauth.authz import controllers as authz_controllers
+from tauth.authz.policies.schemas import AuthorizationDataIn
+from tauth.schemas.infostar import Infostar
+from tauth.utils.headers import auth_headers_injector
 
 from ..authz.engines.factory import AuthorizationEngine
 from ..authz.engines.interface import AuthorizationResponse
 
 
-def init_app():
+def setup_engine():
     AuthorizationEngine.setup()
+
+
+def init_app(app: FastAPI):
+    app.router.dependencies.append(
+        Depends(_authorize_no_return, use_cache=True)
+    )
+
+
+def init_router(router: APIRouter):
+    router.dependencies.append(Depends(_authorize_no_return, use_cache=True))
 
 
 def authorize(
-    policy_name: str,
-    resource: str,
-) -> Callable[..., AuthorizationResponse]:
-    AuthorizationEngine.setup()
-    engine = AuthorizationEngine.get()
+    authz_data: AuthorizationDataIn,
+    infostar: Infostar = Depends(authenticate),
+) -> Callable[[], AuthorizationResponse]:
+    print("Aqui")
 
-    def wrap(
-        user_email: str | None = Header(
-            default=None,
-            alias="X-User-Email",
-            description="Ignore when using OAuth.",
-        ),
-        id_token: str | None = Header(
-            default=None, alias="X-ID-Token", description="Auth0 ID token."
-        ),
-        authorization: HTTPAuthorizationCredentials | None = Security(
-            HTTPBase(scheme="bearer", auto_error=False)
-        ),
-    ):
-        response = engine.is_authorized(
-            policy_name=policy_name,
-            rule=resource,
-            access_token=f"{authorization.scheme} {authorization.credentials}",
-            id_token=id_token,
-            user_email=user_email,
+    def wrapper(authz_response=Depends(_authorize)):
+        return authz_response
+
+    return wrapper
+
+
+@auth_headers_injector
+def _authorize(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user_email: str | None = None,
+    id_token: str | None = None,
+    authorization: HTTPAuthorizationCredentials | None = None,
+    authz_data: AuthorizationDataIn | None = None,
+) -> AuthorizationResponse:
+    print("Ali")
+    if not authz_data:
+        raise HTTPException(
+            status_code=s.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid or missing authorization data.",
         )
-        if not response.authorized:
-            raise HTTPException(
-                status_code=s.HTTP_403_FORBIDDEN, detail=response.details
-            )
-        return response
+    result = asyncio.run(authz_controllers.authorize(request, authz_data))
+    if not result.authorized:
+        raise HTTPException(
+            status_code=s.HTTP_403_FORBIDDEN, detail=result.details
+        )
+    return result
 
-    return wrap
+
+def _authorize_no_return(_=Depends(_authorize)) -> None:
+    pass

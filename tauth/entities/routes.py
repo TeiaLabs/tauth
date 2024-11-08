@@ -6,6 +6,11 @@ from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.authz.engines.interface import AuthorizationResponse
+from tauth.authz.policies.schemas import AuthorizationDataIn
+from tauth.dependencies.authentication import authenticate
+from tauth.dependencies.authorization import authorize
+
 from ..authz import privileges
 from ..authz.roles.models import RoleDAO
 from ..authz.roles.schemas import RoleRef
@@ -57,10 +62,19 @@ async def read_one(
 
 
 @router.get("", status_code=s.HTTP_200_OK)
-@router.get("/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_many(
     request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    # infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
+    authz_response: AuthorizationResponse = Depends(
+        authorize(
+            authz_data=AuthorizationDataIn(
+                policy_name="melt-key",
+                rule="is_admin",
+                context=dict(),
+            ),
+        )
+    ),
     name: str | None = Query(None),
     external_id_key: str | None = Query(None, alias="external_ids.key"),
     external_id_value: str | None = Query(None, alias="external_ids.value"),

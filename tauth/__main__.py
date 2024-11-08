@@ -23,11 +23,12 @@ def main():
     uvicorn.run(
         app="tauth.app:create_app",
         factory=True,
-        forwarded_allow_ips="*",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.RELOAD,
         workers=settings.WORKERS,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
     )
 
 

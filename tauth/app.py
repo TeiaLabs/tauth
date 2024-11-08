@@ -2,14 +2,15 @@ from importlib.metadata import version
 
 from fastapi import APIRouter, FastAPI
 
-from . import dependencies
+from tauth import dependencies
+
 from .authn.routes import router as authentication_router
-from .authproviders import router as authproviders_router
+from .authproviders.routes import router as authproviders_router
 from .authz.permissions.routes import router as permissions_router
 from .authz.policies.routes import router as policy_router
 from .authz.roles.routes import router as roles_router
 from .authz.routes import router as authorization_router
-from .entities import router as entities_router
+from .entities.routes import router as entities_router
 from .legacy import client, tokens
 from .resource_management.access import router as resource_access_router
 from .resource_management.resources import router as resources_router
