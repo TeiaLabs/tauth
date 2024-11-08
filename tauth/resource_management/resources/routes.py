@@ -6,6 +6,8 @@ from loguru import logger
 from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.resource_management.access.models import ResourceAccessDAO
+
 from ...authz import privileges
 from ...entities.models import EntityDAO
 from ...schemas import Infostar
@@ -79,12 +81,12 @@ async def read_one(
     infostar: Infostar = Depends(privileges.is_valid_user),
 ):
     logger.debug(f"Reading resource {resource_id!r}.")
-    role = reading.read_one(
+    resource = reading.read_one(
         infostar=infostar,
         model=ResourceDAO,
         identifier=resource_id,
     )
-    return role
+    return resource
 
 
 @router.delete("/{resource_id}", status_code=s.HTTP_204_NO_CONTENT)
@@ -97,9 +99,20 @@ async def delete_one(
     resource_id: PyObjectId,
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
-    logger.debug(f"Deleting resource {resource_id!r}")
-    resource_coll = ResourceDAO.collection(alias=Settings.get().REDBABY_ALIAS)
-    resource_coll.delete_one({"_id": resource_id})
+    logger.debug(f"Trying to delete resource {resource_id!r}")
+    alias = Settings.get().REDBABY_ALIAS
+
+    resource_coll = ResourceDAO.collection(alias=alias)
+    res = resource_coll.delete_one({"_id": resource_id})
+    if res.deleted_count > 0:
+        logger.info(
+            f"Deleted resource {resource_id!r}, deleting related access"
+        )
+        access_coll = ResourceAccessDAO.collection(alias=alias)
+        res = access_coll.delete_many({"resource_id": resource_id})
+        logger.info(
+            f"Deleted {res.deleted_count} access related to resource {resource_id!r}"
+        )
 
 
 @router.patch("/{resource_id}", status_code=s.HTTP_204_NO_CONTENT)

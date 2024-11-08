@@ -1554,7 +1554,7 @@ wheels = [
 
 [[package]]
 name = "tauth"
-version = "2.3.0.post22"
+version = "2.3.0.post36"
 source = { editable = "." }
 dependencies = [
     { name = "cachetools" },

@@ -26,13 +26,11 @@ class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
             IndexModel(
                 [
                     ("service_ref.handle", 1),
-                    ("role_ref.id", 1),
                     ("resource_collection", 1),
                 ],
                 unique=True,
             ),
             IndexModel([("service_ref.handle", 1)]),
-            IndexModel([("role_ref.name", 1)]),
             IndexModel([("ids", 1)]),
         ]
         return idxs

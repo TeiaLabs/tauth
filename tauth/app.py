@@ -11,6 +11,7 @@ from .authz.roles.routes import router as roles_router
 from .authz.routes import router as authorization_router
 from .entities import router as entities_router
 from .legacy import client, tokens
+from .resource_management.access import router as resource_access_router
 from .resource_management.resources import router as resources_router
 from .settings import Settings
 
@@ -48,4 +49,5 @@ def get_router() -> APIRouter:
     base_router.include_router(resources_router)
     base_router.include_router(client.router)
     base_router.include_router(tokens.router)
+    base_router.include_router(resource_access_router)
     return base_router
