@@ -43,17 +43,27 @@ async def create_one(
     org_ref = OrganizationRef(**org_ref.model_dump())
 
     if body.external_ids:
-        existing_providers = reading.read_many(
-            infostar=infostar, model=AuthProviderDAO, external_ids=body.external_ids
-        )
-        if existing_providers:
-            raise HTTPException(
-                status_code=s.HTTP_409_CONFLICT,
-                detail=(
-                    f"External IDs {body.external_ids} "
-                    "already exist in an existing auth provider."
-                ),
+        external_ids_dict = {item.name: item.value for item in body.external_ids}
+        issuer = external_ids_dict.get("issuer")
+        org_id = external_ids_dict.get("org_id")
+
+        if issuer or org_id:
+            existing_providers = reading.read_many(
+                infostar=infostar,
+                model=AuthProviderDAO,
+                filters={
+                    "external_ids.name": {"$in": ["issuer", "org_id"]},
+                    "external_ids.value": {"$in": [issuer, org_id]},
+                },
             )
+            if existing_providers:
+                raise HTTPException(
+                    status_code=s.HTTP_409_CONFLICT,
+                    detail=(
+                        f"External IDs {body.external_ids} "
+                        "already exist in an existing auth provider."
+                    ),
+                )
 
     in_schema = AuthProviderMoreIn(
         **body.model_dump(),
