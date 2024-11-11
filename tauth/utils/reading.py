@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Type, TypeVar
 
 from crypteia import Multibasing, Multihashing, ToBytes, compose
 from fastapi import HTTPException
+from pydantic import BaseModel
 from redbaby.behaviors import ReadingMixin
 from redbaby.pyobjectid import PyObjectId
 
@@ -9,7 +10,7 @@ from ..schemas import Infostar
 from ..settings import Settings
 
 T = TypeVar("T", bound=ReadingMixin)
-Z = TypeVar("Z", bound=ReadingMixin)
+Z = TypeVar("Z", bound=BaseModel)
 
 
 def read_many(infostar: Infostar, model: Type[T], **filters) -> list[T]:
@@ -65,7 +66,6 @@ def read_one_filters(infostar: Infostar, model: Type[T], **filters) -> T:
 
 
 def aggregate(
-    infostar: Infostar,
     model: Type[T],
     pipeline: List[dict[str, Any]],
     result_model: Type[Z],

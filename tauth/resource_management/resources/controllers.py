@@ -4,7 +4,6 @@ from tauth.resource_management.resources.models import ResourceDAO
 from tauth.schemas.infostar import Infostar
 from tauth.utils import reading
 
-from ...authz.permissions.controllers import read_permissions_from_roles
 from .schemas import ResourceContext
 
 
@@ -23,7 +22,6 @@ def read_many(
 
 
 def get_context_resources(
-    infostar: Infostar,
     entity: EntityDAO,
     service_handle: str,
     resource_collection: str,
@@ -57,16 +55,10 @@ def get_context_resources(
     ]
 
     resources = reading.aggregate(
-        infostar=infostar,
         model=ResourceAccessDAO,
         result_model=ResourceDAO,
         pipeline=pipeline,
     )
-    # TODO: Add permissions from entity permission list
-    permissions = read_permissions_from_roles([role.id for role in entity.roles])
-    permissions_list = [
-        context for contexts in permissions.values() for context in contexts
-    ]
 
     resource_context: list[ResourceContext] = []
     for resource in resources:
@@ -75,7 +67,6 @@ def get_context_resources(
             resource_collection=resource.resource_collection,
             ids=resource.ids,
             metadata=resource.metadata,
-            permissions=permissions_list,
         )
         resource_context.append(obj)
 
