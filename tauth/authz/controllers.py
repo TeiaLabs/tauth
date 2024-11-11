@@ -57,7 +57,6 @@ async def authorize(
                 detail=dict(msg=message),
             )
         resources = get_context_resources(
-            infostar=infostar,
             entity=entity,
             service_handle=authz_data.resources.service_handle,
             resource_collection=authz_data.resources.resource_collection,
