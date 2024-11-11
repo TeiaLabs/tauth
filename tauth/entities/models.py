@@ -6,6 +6,7 @@ from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.document import Document
+from redbaby.pyobjectid import PyObjectId
 
 from ..authz.roles.schemas import RoleRef
 from ..schemas.attribute import Attribute
@@ -21,6 +22,7 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     handle: str
     owner_ref: EntityRef | None = None
     roles: list[RoleRef] = Field(default_factory=list)
+    permissions: list[PyObjectId] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]
 
     @classmethod

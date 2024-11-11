@@ -1,10 +1,17 @@
+from collections.abc import Iterable
+
 from fastapi import HTTPException, Request
 from fastapi import status as s
 from loguru import logger
+from redbaby.pyobjectid import PyObjectId
 
 from tauth.authz.engines.errors import PolicyNotFound, RuleNotFound
 from tauth.authz.engines.interface import AuthorizationResponse
-from tauth.authz.permissions.controllers import get_permissions_set
+from tauth.authz.permissions.controllers import (
+    read_many_permissions,
+    read_permissions_from_roles,
+)
+from tauth.authz.permissions.schemas import PermissionContext
 from tauth.schemas.infostar import Infostar
 
 from ..authz.engines.factory import AuthorizationEngine
@@ -12,6 +19,7 @@ from ..entities.models import EntityDAO
 from ..resource_management.resources.controllers import get_context_resources
 from ..utils.errors import EngineException
 from .policies.schemas import AuthorizationDataIn
+from .utils import get_request_context
 
 
 async def authorize(
@@ -25,7 +33,11 @@ async def authorize(
     logger.debug("Getting authorization engine and adding context.")
     authz_engine = AuthorizationEngine.get()
     authz_data.context["infostar"] = infostar.model_dump(mode="json")
-    # authz_data.context["request"] = await request.json()
+
+    authz_data.context["request"] = get_request_context(request)
+    if await request.body():
+        authz_data.context["request"]["body"] = await request.json()
+
     entity = EntityDAO.from_handle(handle=infostar.user_handle)
     if not entity:
         message = f"Entity not found for handle: {infostar.user_handle}."
@@ -37,7 +49,7 @@ async def authorize(
     logger.debug(f"Entity found: {entity}.")
     authz_data.context["entity"] = entity.model_dump(mode="json")
     role_ids = map(lambda x: x.id, entity.roles)
-    permissions = get_permissions_set(role_ids)
+    permissions = get_permissions_set(role_ids, entity.permissions)
     authz_data.context["permissions"] = [
         permission.model_dump(mode="json") for permission in permissions
     ]
@@ -92,3 +104,16 @@ def handle_errors(e: EngineException):
         status_code=s.HTTP_500_INTERNAL_SERVER_ERROR,
         detail=dict(msg=f"Unhandled engine error: {str(e)}"),
     )
+
+
+def get_permissions_set(
+    roles: Iterable[PyObjectId], entity_permissions: list[PyObjectId]
+) -> set[PermissionContext]:
+    permissions = read_permissions_from_roles(roles)
+    s = set(
+        context for contexts in permissions.values() for context in contexts
+    )
+
+    s2 = read_many_permissions(entity_permissions)
+
+    return s.union(s2)

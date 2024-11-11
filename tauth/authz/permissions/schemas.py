@@ -2,7 +2,6 @@ from typing import Any
 
 from fastapi.openapi.models import Example
 from pydantic import BaseModel
-from redbaby.pyobjectid import PyObjectId
 
 from ...entities.schemas import EntityRef
 
@@ -73,7 +72,6 @@ class PermissionIntermediate(BaseModel):
 class PermissionContext(BaseModel):
     name: str
     entity_handle: str
-    role_id: PyObjectId
 
     def __hash__(self):
         return hash((self.name, self.entity_handle))

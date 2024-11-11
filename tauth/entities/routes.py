@@ -6,6 +6,7 @@ from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.authz.permissions.models import PermissionDAO
 from tauth.dependencies.authentication import authenticate
 
 from ..authz import privileges
@@ -176,5 +177,79 @@ async def remove_entity_role(
     return {
         "msg": "Role removed from entity.",
         "role_id": str(role_id),
+        "entity_id": str(entity_id),
+    }
+
+
+@router.post("/{entity_id}/permissions", status_code=s.HTTP_201_CREATED)
+async def add_entity_permission(
+    request: Request,
+    infostar: Infostar = Depends(privileges.is_valid_user),
+    entity_id: str = PathParam(),
+    permission_id: PyObjectId = Query(),
+):
+    logger.debug(f"Adding permission (permission_id={permission_id!r}")
+
+    # Check if entity exists
+    logger.debug(f"Checking if entity {entity_id!r} exists.")
+    entity = await read_one(
+        entity_id=request.path_params["entity_id"],
+        infostar=infostar,
+    )
+
+    permission = reading.read_one(
+        infostar=infostar,
+        model=PermissionDAO,
+        identifier=permission_id,
+    )
+    if not permission:
+        raise HTTPException(
+            status_code=s.HTTP_404_NOT_FOUND,
+            detail="Permission not found.",
+        )
+    logger.debug(f"Permission found: {permission!r}.")
+    # 409 in case the role is already attached
+    for p in entity.permissions:
+        if p == permission.id:
+            raise HTTPException(
+                status_code=s.HTTP_409_CONFLICT,
+                detail=f"Role {permission.name!r} already attached to entity {entity.handle!r}.",
+            )
+    # Add role to entity
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+    res = entity_coll.update_one(
+        {"_id": entity.id},
+        {"$push": {"permisions": permission.id}},
+    )
+    logger.debug(f"Update result: {res!r}.")
+    return {
+        "msg": "Permission added to entity.",
+        "permission_name": str(permission.name),
+        "entity_id": str(entity.id),
+    }
+
+
+@router.delete(
+    "/{entity_id}/permissions/{permission_id}",
+    status_code=s.HTTP_204_NO_CONTENT,
+)
+async def remove_entity_permission(
+    request: Request,
+    infostar: Infostar = Depends(privileges.is_valid_user),
+    entity_id: str = PathParam(),
+    permission_id: PyObjectId = PathParam(),
+):
+    logger.debug(
+        f"Removing permission {permission_id!r} from entity {entity_id!r}."
+    )
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+    res = entity_coll.update_one(
+        {"_id": entity_id},
+        {"$pull": {"permissions": permission_id}},
+    )
+    logger.debug(f"Update result: {res!r}.")
+    return {
+        "msg": "Role removed from entity.",
+        "permission_id": str(permission_id),
         "entity_id": str(entity_id),
     }

@@ -4,6 +4,7 @@ from redbaby.pyobjectid import PyObjectId
 
 from ...settings import Settings
 from ..roles.models import RoleDAO
+from .models import PermissionDAO
 from .schemas import PermissionContext
 
 
@@ -45,7 +46,6 @@ def read_permissions_from_roles(
             PermissionContext(
                 name=x["name"],
                 entity_handle=x["entity_ref"]["handle"],
-                role_id=role_id,
             )
             for x in obj["permissions"]
         ]
@@ -53,8 +53,22 @@ def read_permissions_from_roles(
     return return_dict
 
 
-def get_permissions_set(roles: Iterable[PyObjectId]) -> set[PermissionContext]:
-    permissions = read_permissions_from_roles(roles)
-    return set(
-        context for contexts in permissions.values() for context in contexts
+def read_many_permissions(
+    perms: list[PyObjectId],
+) -> set[PermissionContext]:
+
+    permission_coll = PermissionDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
     )
+    permissions = permission_coll.find({"_id": {"$in": perms}})
+
+    s = set()
+    for p in permissions:
+        s.add(
+            PermissionContext(
+                name=p["name"],
+                entity_handle=p["entity_ref"]["handle"],
+            )
+        )
+
+    return s

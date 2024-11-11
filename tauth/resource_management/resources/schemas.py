@@ -5,8 +5,6 @@ from pydantic.config import ConfigDict
 
 from tauth.entities.schemas import EntityRef
 
-from ...authz.permissions.schemas import PermissionContext
-
 
 class Identifier(BaseModel):
     id: str
@@ -51,7 +49,6 @@ class ResourceUpdate(BaseModel):
 
 class ResourceContext(BaseModel):
     service_ref: EntityRef
-    permissions: list[PermissionContext]
     resource_collection: str
     ids: list[Identifier]
     metadata: dict[str, Any]
