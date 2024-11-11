@@ -1,5 +1,3 @@
-from redbaby.pyobjectid import PyObjectId
-
 from tauth.resource_management.resources.models import ResourceDAO
 from tauth.schemas.infostar import Infostar
 from tauth.utils import reading
@@ -22,12 +20,7 @@ def read_many(
     return reading.read_many(infostar=infostar, model=ResourceDAO, **filters)
 
 
-def get_context_resources(
-    infostar: Infostar,
-    role_ids: list[PyObjectId],
-    service_handle: str,
-    resource_collection: str,
-):
+def get_context_resources(entity) -> list[ResourceContext]:
     resources = read_many(
         infostar=infostar,
         service_handle=service_handle,

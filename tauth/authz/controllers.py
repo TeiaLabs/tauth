@@ -2,7 +2,7 @@ from fastapi import HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 
-from tauth.authz.engines.errors import PermissionNotFound
+from tauth.authz.engines.errors import PolicyNotFound, RuleNotFound
 from tauth.authz.engines.interface import AuthorizationResponse
 from tauth.authz.permissions.controllers import get_permissions_set
 from tauth.schemas.infostar import Infostar
@@ -25,7 +25,7 @@ async def authorize(
     logger.debug("Getting authorization engine and adding context.")
     authz_engine = AuthorizationEngine.get()
     authz_data.context["infostar"] = infostar.model_dump(mode="json")
-    authz_data.context["request"] = await request.json()
+    # authz_data.context["request"] = await request.json()
     entity = EntityDAO.from_handle(handle=infostar.user_handle)
     if not entity:
         message = f"Entity not found for handle: {infostar.user_handle}."
@@ -78,11 +78,11 @@ async def authorize(
         handle_errors(e)
 
     logger.debug(f"Authorization result: {result}.")
-    return result.model_dump(mode="json")
+    return result
 
 
 def handle_errors(e: EngineException):
-    if isinstance(e, PermissionNotFound):
+    if isinstance(e, (PolicyNotFound | RuleNotFound)):
         raise HTTPException(
             status_code=s.HTTP_404_NOT_FOUND,
             detail=dict(msg=str(e)),

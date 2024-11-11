@@ -5,6 +5,7 @@ from fastapi import status as s
 from loguru import logger
 from opa_client import OpaClient
 from opa_client.errors import (
+    CheckPermissionError,
     ConnectionsError,
     DeletePolicyError,
     PolicyNotFoundError,
@@ -15,7 +16,7 @@ from redbaby.pyobjectid import PyObjectId
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
 from ...policies.schemas import AuthorizationPolicyIn
-from ..errors import EngineException, PermissionNotFound
+from ..errors import EngineException, PolicyNotFound, RuleNotFound
 from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import OPASettings
 
@@ -93,7 +94,9 @@ class OPAEngine(AuthorizationInterface):
         except Exception as e:
             logger.error(f"Error in OPA: {e}")
             if isinstance(e, PolicyNotFoundError):
-                raise PermissionNotFound(f"Policy {policy_name} not found")
+                raise PolicyNotFound(f"Policy {policy_name} not found")
+            elif isinstance(e, CheckPermissionError):
+                raise RuleNotFound(f"Rule {rule} not found in {policy_name}")
             else:
                 raise EngineException(f"Error during authorization check {e}")
 
