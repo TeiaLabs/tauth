@@ -2,41 +2,40 @@ package tauth.datasources
 
 import rego.v1
 
+admin_resources := _filter_resource("admin:")
 
+write_resources := admin_resources | _filter_resource("write:")
 
-admin_filtered_resources = [resource |
-	some i
-	resource = input.resources[i]
-	has_ds_admin_permission(resource)
-]
+read_resources := _filter_resource("read:") | write_resources
 
-read_filtered_resources = [resource |
-	some i
-	resource = input.resources[i]
-	has_ds_read_permission(resource)
-]
+default has_admin := false
 
-write_filtered_resources = [resource |
-	some i
-	resource = input.resources[i]
-	has_ds_write_permission(resource)
-]
-
-has_ds_admin_permission(resource) if {
-	some j
-	resource.permissions[j].name == "DS-admin"
-	startswith(resource.permissions[j].entity_handle, "/datasources")
-
+has_admin := resource if {
+	resource := has_resource_access(admin_resources)
 }
 
-has_ds_read_permission(resource) if {
-	some j
-	resource.permissions[j].name == "DS-read"
-	startswith(resource.permissions[j].entity_handle, "/datasources")
+default has_write := false
+
+has_write := resource if {
+	resource := has_resource_access(write_resources)
 }
 
-has_ds_write_permission(resource) if {
-	some j
-	resource.permissions[j].name == "DS-write"
-	startswith(resource.permissions[j].entity_handle, "/datasources")
+default has_read := false
+
+has_read := resource if {
+	resource := has_resource_access(read_resources)
+}
+
+has_resource_access(resources) := resource if {
+	some resource in resources
+	resource.id == input.request.path.name
+}
+
+# set comprehension for allowed resources
+_filter_resource(permission_prefix) := {allowed_ids |
+	some permission in input.permissions
+	startswith(permission.name, permission_prefix)
+	some r in input.resources
+	endswith(permission.name, r._id)
+	allowed_ids := r.ids[_]
 }
