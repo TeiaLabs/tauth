@@ -15,12 +15,15 @@ class AuthorizationEngine:
         if settings.AUTHZ_ENGINE == "opa":
             from .opa.engine import OPAEngine
             from .opa.settings import OPASettings
+
             sets = cast(OPASettings, settings.AUTHZ_ENGINE_SETTINGS)
             cls._instance = OPAEngine(settings=sets)
-            cls._instance._initialize_default_policies()
+            cls._instance._initialize_db_policies()
+
         elif settings.AUTHZ_ENGINE == "remote":
             from .remote.engine import RemoteEngine
             from .remote.settings import RemoteSettings
+
             sets = cast(RemoteSettings, settings.AUTHZ_ENGINE_SETTINGS)
             cls._instance = RemoteEngine(settings=sets)
         else:

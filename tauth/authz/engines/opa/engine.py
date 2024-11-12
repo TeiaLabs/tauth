@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from fastapi import HTTPException
 from fastapi import status as s
 from loguru import logger
@@ -12,21 +10,15 @@ from opa_client.errors import (
 )
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.authz.policies.models import AuthorizationPolicyDAO
+from tauth.utils import reading
+
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
 from ...policies.schemas import AuthorizationPolicyIn
 from ..errors import PermissionNotFound
 from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import OPASettings
-
-PATH_POLICIES = Path(__file__).parents[4] / "resources" / "policies"
-
-DEFAULT_POLICIES = {
-    "melt-key": {
-        "path": PATH_POLICIES / "melt-key.rego",
-        "description": "MELT API Key privilege levels.",
-    },
-}
 
 SYSTEM_INFOSTAR = Infostar(
     request_id=PyObjectId(),
@@ -54,25 +46,29 @@ class OPAEngine(AuthorizationInterface):
             raise e
         logger.debug("OPA Engine is running.")
 
-    def _initialize_default_policies(self):
-        logger.debug("Inserting default policies")
-        for name, policy_data in DEFAULT_POLICIES.items():
-            logger.debug(
-                f"Loading policy: {name!r} from {policy_data['path']!r}."
-            )
-            policy_content = policy_data["path"].read_text()
-            policy = AuthorizationPolicyIn(
-                name=name,
-                description=policy_data["description"],
-                policy=policy_content,
-                type="opa",
+    def _initialize_db_policies(self):
+        policies = reading.read_many(
+            infostar=SYSTEM_INFOSTAR, model=AuthorizationPolicyDAO
+        )
+        logger.info(
+            f"Loading DB policies into OPA. Policies loaded: {len(policies)}"
+        )
+
+        for policy in policies:
+            policy_in = AuthorizationPolicyIn(
+                name=policy.name,
+                description=policy.description,
+                policy=policy.policy,
+                type=policy.type,
             )
             try:
-                upsert_one(policy, SYSTEM_INFOSTAR)
+                upsert_one(policy_in, SYSTEM_INFOSTAR)
             except HTTPException as e:
                 if e.status_code != s.HTTP_409_CONFLICT:
                     raise e
-                logger.debug(f"Policy {name} already exists. Skipping.")
+                logger.debug(
+                    f"Policy {policy_in.name} already exists. Skipping."
+                )
 
     def is_authorized(
         self,
