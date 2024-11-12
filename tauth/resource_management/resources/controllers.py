@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from tauth.entities.models import EntityDAO
 from tauth.resource_management.access.models import ResourceAccessDAO
 from tauth.resource_management.resources.models import ResourceDAO
@@ -5,6 +7,11 @@ from tauth.schemas.infostar import Infostar
 from tauth.utils import reading
 
 from .schemas import ResourceContext
+
+
+def format_context(res: dict):
+    resource_details = res["resource_details"]
+    return ResourceContext(**resource_details)
 
 
 def read_many(
@@ -25,11 +32,10 @@ def get_context_resources(
     entity: EntityDAO,
     service_handle: str,
     resource_collection: str,
-) -> list[ResourceContext]:
+) -> Iterable[ResourceContext]:
     """Get context resources
 
     Args:
-        infostar (Infostar): Infostar
         entity (EntityDAO): EntityDAO
         service_handle (str): service_handle
         resource_collection (str): resource_collection
@@ -54,20 +60,10 @@ def get_context_resources(
         },
     ]
 
-    resources = reading.aggregate(
+    resources: Iterable[ResourceContext] = reading.aggregate(
         model=ResourceAccessDAO,
-        result_model=ResourceDAO,
         pipeline=pipeline,
-    )
+        formatter=format_context,
+    )  # type: ignore
 
-    resource_context: list[ResourceContext] = []
-    for resource in resources:
-        obj = ResourceContext(
-            service_ref=resource.service_ref,
-            resource_collection=resource.resource_collection,
-            ids=resource.ids,
-            metadata=resource.metadata,
-        )
-        resource_context.append(obj)
-
-    return resource_context
+    return resources

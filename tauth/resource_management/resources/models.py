@@ -28,7 +28,6 @@ class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
                     ("service_ref.handle", 1),
                     ("resource_collection", 1),
                 ],
-                unique=True,
             ),
             IndexModel([("service_ref.handle", 1)]),
             IndexModel([("ids", 1)]),

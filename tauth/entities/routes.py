@@ -219,7 +219,7 @@ async def add_entity_permission(
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity.id},
-        {"$push": {"permisions": permission.id}},
+        {"$push": {"permissions": permission.id}},
     )
     logger.debug(f"Update result: {res!r}.")
     return {

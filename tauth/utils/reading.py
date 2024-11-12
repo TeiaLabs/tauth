@@ -1,6 +1,6 @@
-from typing import Any, Dict, List, Type, TypeVar
+from collections.abc import Callable, Iterable
+from typing import Any, TypeVar
 
-from crypteia import Multibasing, Multihashing, ToBytes, compose
 from fastapi import HTTPException
 from pydantic import BaseModel
 from redbaby.behaviors import ReadingMixin
@@ -11,9 +11,11 @@ from ..settings import Settings
 
 T = TypeVar("T", bound=ReadingMixin)
 Z = TypeVar("Z", bound=BaseModel)
+U = TypeVar("U")
+X = TypeVar("X")
 
 
-def read_many(infostar: Infostar, model: Type[T], **filters) -> list[T]:
+def read_many(infostar: Infostar, model: type[T], **filters) -> list[T]:
     query = {k: v for k, v in filters.items() if v is not None}
     objs = model.find(
         filter=query,
@@ -24,11 +26,15 @@ def read_many(infostar: Infostar, model: Type[T], **filters) -> list[T]:
     return objs
 
 
-def read_one(infostar: Infostar, model: Type[T], identifier: PyObjectId | str) -> T:
+def read_one(
+    infostar: Infostar, model: type[T], identifier: PyObjectId | str
+) -> T:
     if isinstance(identifier, str):
         identifier = PyObjectId(identifier)
     filters = {"_id": identifier}
-    item = model.collection(alias=Settings.get().REDBABY_ALIAS).find_one(filters)
+    item = model.collection(alias=Settings.get().REDBABY_ALIAS).find_one(
+        filters
+    )
     if not item:
         d = {
             "error": "DocumentNotFound",
@@ -39,7 +45,7 @@ def read_one(infostar: Infostar, model: Type[T], identifier: PyObjectId | str) -
     return item
 
 
-def read_one_filters(infostar: Infostar, model: Type[T], **filters) -> T:
+def read_one_filters(infostar: Infostar, model: type[T], **filters) -> T:
     print(filters)
     f = {k: v for k, v in filters.items() if v is not None}
     items = model.find(
@@ -66,19 +72,21 @@ def read_one_filters(infostar: Infostar, model: Type[T], **filters) -> T:
 
 
 def aggregate(
-    model: Type[T],
-    pipeline: List[dict[str, Any]],
-    result_model: Type[Z],
-) -> List[Z]:
-    try:
-        results = model.collection(alias=Settings.get().REDBABY_ALIAS).aggregate(
-            pipeline
-        )
+    model: type[T],
+    pipeline: list[dict[str, Any]],
+    formatter: (
+        Callable[[dict[str, Any]], Z]
+        | Callable[[dict[str, Any]], T]
+        | Callable[[dict[str, Any]], X]
+        | None
+    ) = None,
+) -> Iterable[Z] | Iterable[T] | Iterable[X]:
 
-        validated_results = [result_model.model_validate(result) for result in results]
+    collection = model.collection(alias=Settings.get().REDBABY_ALIAS)
 
-        return validated_results
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail={"error": "AggregationError", "msg": str(e)}
-        )
+    result = collection.aggregate(pipeline)
+
+    if formatter is None:
+        formatter = lambda x: model(**x)
+
+    return map(formatter, result)  # type: ignore

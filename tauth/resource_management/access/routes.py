@@ -24,7 +24,6 @@ router = APIRouter(prefix=f"/{service_name}/access", tags=[service_name])
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)
-@router.post("/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def create_one(
     body: ResourceAccessIn = Body(),
     infostar: Infostar = Depends(privileges.is_valid_user),
@@ -63,6 +62,7 @@ async def create_one(
     return GeneratedFields(**resource_access.bson())
 
 
+@router.get("/{access_id}", status_code=s.HTTP_200_OK)
 async def read_one(
     access_id: PyObjectId,
     infostar: Infostar = Depends(privileges.is_valid_user),
@@ -72,6 +72,7 @@ async def read_one(
     )
 
 
+@router.get("", status_code=s.HTTP_200_OK)
 async def read_many(
     infostar: Infostar = Depends(privileges.is_valid_user),
     resource_id: PyObjectId | None = Query(None),
@@ -82,6 +83,7 @@ async def read_many(
     )
 
 
+@router.delete("", status_code=s.HTTP_204_NO_CONTENT)
 async def delete_one(
     access_id: PyObjectId,
     infostar: Infostar = Depends(privileges.is_valid_user),
