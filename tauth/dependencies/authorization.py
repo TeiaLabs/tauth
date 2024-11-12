@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from tauth.authz import controllers as authz_controllers
 from tauth.authz.policies.schemas import AuthorizationDataIn
 from tauth.schemas.infostar import Infostar
+from tauth.settings import Settings
 
 from ..authz.engines.factory import AuthorizationEngine
 from ..authz.engines.interface import AuthorizationResponse
@@ -46,7 +47,17 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
                 status_code=s.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Invalid or missing authorization data.",
             )
-        result = await authz_controllers.authorize(request, authz_data)
+        if Settings.get().AUTHN_ENGINE == "remote":
+            engine = AuthorizationEngine.get()
+            result = engine.is_authorized(
+                policy_name=authz_data.policy_name,
+                rule=authz_data.rule,
+                context=authz_data.context,
+                resources=authz_data.resources,
+            )
+        else:
+            result = await authz_controllers.authorize(request, authz_data)
+
         if not result.authorized:
             raise HTTPException(
                 status_code=s.HTTP_403_FORBIDDEN, detail=result.details

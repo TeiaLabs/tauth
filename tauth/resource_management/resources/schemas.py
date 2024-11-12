@@ -2,6 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
+from redbaby.pyobjectid import PyObjectId
 
 from tauth.entities.schemas import EntityRef
 
@@ -48,6 +49,7 @@ class ResourceUpdate(BaseModel):
 
 
 class ResourceContext(BaseModel):
+    id: PyObjectId = Field(alias="_id")
     service_ref: EntityRef
     resource_collection: str
     ids: list[Identifier]
