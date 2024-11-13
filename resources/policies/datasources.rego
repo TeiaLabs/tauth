@@ -29,6 +29,13 @@ has_read := resource if {
 has_resource_access(resources) := resource if {
 	some resource in resources
 	resource.id == input.request.path.name
+	has_valid_alias(resource)
+}
+
+has_valid_alias(resource) if {
+    org_alias := trim_prefix(input.entity.owner_ref.handle, "/")
+	alias := object.get(input.request.query, "db_alias", org_alias) 
+    resource.metadata.alias == alias
 }
 
 # set comprehension for allowed resources

@@ -62,6 +62,7 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
             raise HTTPException(
                 status_code=s.HTTP_403_FORBIDDEN, detail=result.details
             )
+        request.state.authz_result = result
         return result
 
     return _authorize
