@@ -2,11 +2,13 @@ package tauth.datasources
 
 import rego.v1
 
-admin_resources := _filter_resource("ds-admin:")
+import tauth.utils.build_permission_name
 
-write_resources := admin_resources | _filter_resource("ds-write:")
+admin_resources := _filter_resource(build_permission_name(["ds", "admin"]))
 
-read_resources := _filter_resource("ds-read:") | write_resources
+write_resources := admin_resources | _filter_resource(build_permission_name(["ds", "write"]))
+
+read_resources := _filter_resource(build_permission_name(["ds", "read"])) | write_resources
 
 default has_admin := false
 

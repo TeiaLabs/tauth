@@ -26,7 +26,7 @@ router = APIRouter(prefix=f"/{service_name}/resources", tags=[service_name])
 @router.post("/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
 async def create_one(
     body: ResourceIn = Body(
-        openapi_examples=ResourceIn.model_config["json_schema_extra"]["examples"][0]  # type: ignore
+        openapi_examples=ResourceIn.get_resource_in_examples()
     ),
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):

@@ -7,12 +7,12 @@ from loguru import logger
 from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.dependencies.authentication import authenticate
 from tauth.resource_management.resources.models import ResourceDAO
 from tauth.schemas.gen_fields import GeneratedFields
 from tauth.settings import Settings
 from tauth.utils import reading
 
-from ...authz import privileges
 from ...entities.models import EntityDAO
 from ...schemas import Infostar
 from . import controllers
@@ -26,7 +26,7 @@ router = APIRouter(prefix=f"/{service_name}/access", tags=[service_name])
 @router.post("", status_code=s.HTTP_201_CREATED)
 async def create_one(
     body: ResourceAccessIn = Body(),
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
 ) -> GeneratedFields:
     logger.debug(f"Creating Resource Access for: {body.entity_handle}")
 
@@ -65,7 +65,7 @@ async def create_one(
 @router.get("/{access_id}", status_code=s.HTTP_200_OK)
 async def read_one(
     access_id: PyObjectId,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
 ):
     return reading.read_one(
         infostar=infostar, model=ResourceAccessDAO, identifier=access_id
@@ -74,7 +74,7 @@ async def read_one(
 
 @router.get("", status_code=s.HTTP_200_OK)
 async def read_many(
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     resource_id: PyObjectId | None = Query(None),
     entity_ref: str | None = Query(None),
 ) -> Iterable[ResourceAccessDAO]:
@@ -86,7 +86,7 @@ async def read_many(
 @router.delete("", status_code=s.HTTP_204_NO_CONTENT)
 async def delete_one(
     access_id: PyObjectId,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
 ):
     logger.debug(f"Deleting resource {access_id!r}")
     resource_coll = ResourceAccessDAO.collection(

@@ -1,7 +1,7 @@
 from typing import Any
 
+from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
-from pydantic.config import ConfigDict
 from redbaby.pyobjectid import PyObjectId
 
 from tauth.entities.schemas import EntityRef
@@ -18,28 +18,23 @@ class ResourceIn(BaseModel):
     ids: list[Identifier]
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {
-                    "shared-thread": {
-                        "summary": "Shared Thread",
-                        "description": "Thread shared between users",
-                        "value": {
-                            "service_handle": "/athena-api",
-                            "resource_collection": "threads",
-                            "ids": [
-                                {
-                                    "id": "thread-id",
-                                    "metadata": {"alias": "osf"},
-                                }
-                            ],
-                        },
-                    },
-                },
-            ]
+    @staticmethod
+    def get_resource_in_examples():
+        examples = {
+            "shared-thread": Example(
+                description="Thread shared between users",
+                value=ResourceIn(
+                    service_handle="/athena-api",
+                    resource_collection="threads",
+                    ids=[
+                        Identifier(id="thread-id", metadata={"alias": "osf"})
+                    ],
+                ),
+            )
         }
-    )
+        return examples
+
+    
 
 
 class ResourceUpdate(BaseModel):

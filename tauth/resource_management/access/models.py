@@ -20,7 +20,7 @@ class ResourceAccessDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
 
     @classmethod
     def collection_name(cls) -> str:
-        return "resource-access"
+        return "resource-accesses"
 
     @classmethod
     def indexes(cls) -> list[IndexModel]:

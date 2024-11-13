@@ -207,15 +207,15 @@ async def add_entity_permission(
             status_code=s.HTTP_404_NOT_FOUND,
             detail="Permission not found.",
         )
-    logger.debug(f"Permission found: {permission!r}.")
-    # 409 in case the role is already attached
+    logger.debug(f"permission found: {permission!r}.")
+    # 409 in case the permission is already attached
     for p in entity.permissions:
         if p == permission.id:
             raise HTTPException(
                 status_code=s.HTTP_409_CONFLICT,
-                detail=f"Role {permission.name!r} already attached to entity {entity.handle!r}.",
+                detail=f"Permission {permission.name!r} already attached to entity {entity.handle!r}.",
             )
-    # Add role to entity
+    # Add permission to entity
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity.id},
@@ -249,7 +249,7 @@ async def remove_entity_permission(
     )
     logger.debug(f"Update result: {res!r}.")
     return {
-        "msg": "Role removed from entity.",
+        "msg": "Permission removed from entity.",
         "permission_id": str(permission_id),
         "entity_id": str(entity_id),
     }
