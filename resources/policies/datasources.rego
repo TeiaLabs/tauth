@@ -2,11 +2,11 @@ package tauth.datasources
 
 import rego.v1
 
-admin_resources := _filter_resource("admin:")
+admin_resources := _filter_resource("ds-admin:")
 
-write_resources := admin_resources | _filter_resource("write:")
+write_resources := admin_resources | _filter_resource("ds-write:")
 
-read_resources := _filter_resource("read:") | write_resources
+read_resources := _filter_resource("ds-read:") | write_resources
 
 default has_admin := false
 
@@ -33,9 +33,9 @@ has_resource_access(resources) := resource if {
 }
 
 has_valid_alias(resource) if {
-    org_alias := trim_prefix(input.entity.owner_ref.handle, "/")
-	alias := object.get(input.request.query, "db_alias", org_alias) 
-    resource.metadata.alias == alias
+	org_alias := trim_prefix(input.entity.owner_ref.handle, "/")
+	alias := object.get(input.request.query, "db_alias", org_alias)
+	resource.metadata.alias == alias
 }
 
 # set comprehension for allowed resources
@@ -44,5 +44,10 @@ _filter_resource(permission_prefix) := {allowed_ids |
 	startswith(permission.name, permission_prefix)
 	some r in input.resources
 	endswith(permission.name, r._id)
-	allowed_ids := r.ids[_]
+	some id in r.ids
+	allowed_ids = {
+		"id": id.id,
+		"resource_ref": r._id,
+		"metadata": id.metadata,
+	}
 }
