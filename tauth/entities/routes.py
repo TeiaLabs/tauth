@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as PathParam
+from fastapi import Query, Request
 from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
@@ -45,7 +46,7 @@ async def create_one(
 )
 async def read_one(
     entity_id: str,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
 ) -> EntityDAO:
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     entity = entity_coll.find_one({"_id": entity_id})
@@ -83,7 +84,7 @@ async def read_many(
 )
 async def add_entity_role(
     request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
     role_id: PyObjectId | None = Query(None),
     role_name: str | None = Query(None),
@@ -163,7 +164,7 @@ async def add_entity_role(
 )
 async def remove_entity_role(
     request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
     role_id: PyObjectId = PathParam(),
 ):
@@ -183,8 +184,7 @@ async def remove_entity_role(
 
 @router.post("/{entity_id}/permissions", status_code=s.HTTP_201_CREATED)
 async def add_entity_permission(
-    request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
     permission_id: PyObjectId = Query(),
 ):
@@ -193,7 +193,7 @@ async def add_entity_permission(
     # Check if entity exists
     logger.debug(f"Checking if entity {entity_id!r} exists.")
     entity = await read_one(
-        entity_id=request.path_params["entity_id"],
+        entity_id=entity_id,
         infostar=infostar,
     )
 
@@ -235,7 +235,7 @@ async def add_entity_permission(
 )
 async def remove_entity_permission(
     request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
     permission_id: PyObjectId = PathParam(),
 ):

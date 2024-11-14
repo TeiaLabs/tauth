@@ -1,14 +1,14 @@
 from collections.abc import Iterable
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, Query
 from fastapi import status as s
 from loguru import logger
-from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.authz.permissions.controllers import upsert_permission
 from tauth.dependencies.authentication import authenticate
-from tauth.resource_management.resources.models import ResourceDAO
+from tauth.entities.routes import add_entity_permission
 from tauth.schemas.gen_fields import GeneratedFields
 from tauth.settings import Settings
 from tauth.utils import reading
@@ -17,7 +17,7 @@ from ...entities.models import EntityDAO
 from ...schemas import Infostar
 from . import controllers
 from .models import ResourceAccessDAO
-from .schemas import ResourceAccessIn
+from .schemas import GrantIn, ResourceAccessIn
 
 service_name = Path(__file__).parents[1].name
 router = APIRouter(prefix=f"/{service_name}/access", tags=[service_name])
@@ -30,36 +30,7 @@ async def create_one(
 ) -> GeneratedFields:
     logger.debug(f"Creating Resource Access for: {body.entity_handle}")
 
-    entity = EntityDAO.from_handle(body.entity_handle)
-
-    if not entity:
-        raise HTTPException(
-            s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"
-        )
-
-    resource = reading.read_one(
-        infostar=infostar,
-        model=ResourceDAO,
-        identifier=body.resource_id,
-    )
-
-    resource_access = ResourceAccessDAO(
-        created_by=infostar,
-        resource_id=resource.id,
-        entity_ref=entity.to_ref(),
-    )
-    try:
-        ResourceAccessDAO.collection(
-            alias=Settings.get().REDBABY_ALIAS
-        ).insert_one(resource_access.bson())
-    except DuplicateKeyError:
-        m = f"Entity: {entity.handle} already has access to {resource.id!r}"
-        raise HTTPException(
-            status_code=s.HTTP_409_CONFLICT,
-            detail=m,
-        )
-
-    return GeneratedFields(**resource_access.bson())
+    return controllers.create_one(body, infostar)
 
 
 @router.get("/{access_id}", status_code=s.HTTP_200_OK)
@@ -93,3 +64,33 @@ async def delete_one(
         alias=Settings.get().REDBABY_ALIAS
     )
     resource_coll.delete_one({"_id": access_id})
+
+
+@router.post("/$grant", status_code=201)
+async def grant_access(
+    body: GrantIn,
+    infostar: Infostar = Depends(authenticate),
+):
+    
+    created_access = controllers.create_one(
+        body=ResourceAccessIn(
+            resource_id=body.resource_id, entity_handle=body.entity_handle
+        ),
+        infostar=infostar
+    )
+    entity = EntityDAO.from_handle(body.entity_handle)
+    assert entity
+    logger.debug(f"Created ResourceAccess: {created_access.id}")
+
+    p = upsert_permission(permission_in=body.permission, infostar=infostar)
+    assert isinstance(p.id, PyObjectId)
+    logger.debug(f"Upserted permission: {p.id}")
+
+    # add permission to entity
+    await add_entity_permission(entity_id=entity.id, permission_id=p.id)
+
+    return {
+        "msg": "Granted Access to entity with permission.",
+        "permission": str(body.permission.name),
+        "entity_id": str(entity.id),
+    }

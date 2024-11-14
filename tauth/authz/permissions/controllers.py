@@ -1,11 +1,18 @@
 from collections.abc import Iterable
 
+from fastapi import HTTPException
+from fastapi import status as s
+from loguru import logger
 from redbaby.pyobjectid import PyObjectId
+
+from tauth.entities.models import EntityDAO
+from tauth.schemas.gen_fields import GeneratedFields
+from tauth.schemas.infostar import Infostar
 
 from ...settings import Settings
 from ..roles.models import RoleDAO
 from .models import PermissionDAO
-from .schemas import PermissionContext
+from .schemas import PermissionContext, PermissionIn, PermissionIntermediate
 
 
 def read_permissions_from_roles(
@@ -72,3 +79,28 @@ def read_many_permissions(
         )
 
     return s
+
+
+def upsert_permission(permission_in: PermissionIn, infostar: Infostar):
+    entity_ref = EntityDAO.from_handle_to_ref(permission_in.entity_handle)
+    if not entity_ref:
+        raise HTTPException(
+            s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"
+        )
+    schema_in = PermissionIntermediate(
+        entity_ref=entity_ref, **permission_in.model_dump()
+    )
+    model = PermissionDAO(**schema_in.model_dump(), created_by=infostar)
+
+    coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+    res = coll.update_one(
+        {
+            "name": schema_in.name,
+            "entity_ref.handle": schema_in.entity_ref.handle,
+        },
+        {"$set": model.bson()},
+        upsert=True,
+    )
+    logger.debug(f"Upserted permission res: {res}")
+
+    return GeneratedFields(**model.model_dump(by_alias=True))
