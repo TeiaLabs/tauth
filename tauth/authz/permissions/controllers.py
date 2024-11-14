@@ -83,6 +83,7 @@ def read_many_permissions(
 
 def upsert_permission(permission_in: PermissionIn, infostar: Infostar):
     entity_ref = EntityDAO.from_handle_to_ref(permission_in.entity_handle)
+
     if not entity_ref:
         raise HTTPException(
             s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"
@@ -93,13 +94,19 @@ def upsert_permission(permission_in: PermissionIn, infostar: Infostar):
     model = PermissionDAO(**schema_in.model_dump(), created_by=infostar)
 
     coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
-    res = coll.update_one(
-        {
-            "name": schema_in.name,
-            "entity_ref.handle": schema_in.entity_ref.handle,
-        },
-        {"$set": model.bson()},
-        upsert=True,
+    permission = coll.find_one(
+        {"name": model.name, "entity_ref.handle": model.entity_ref.handle}
+    )
+    if permission:
+        obj = PermissionDAO(**permission)
+        return GeneratedFields(
+            _id=obj.id,
+            created_at=obj.created_at,
+            created_by=obj.created_by,
+        )
+
+    res = coll.insert_one(
+        model.bson(),
     )
     logger.debug(f"Upserted permission res: {res}")
 
