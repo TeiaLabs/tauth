@@ -16,7 +16,7 @@ class AuthorizationPolicyDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
 
     @classmethod
     def collection_name(cls) -> str:
-        return "authorization-policies"
+        return "authz-policies"
 
     @classmethod
     def indexes(cls) -> list[IndexModel]:

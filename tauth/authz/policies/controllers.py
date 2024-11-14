@@ -39,10 +39,14 @@ def upsert_one(
             policy_name=body.name,
             policy_content=body.policy,
         )
-    except Exception as e:  # TODO: exception abstraction for authz provider errors
+    except (
+        Exception
+    ) as e:  # TODO: exception abstraction for authz provider errors
         raise HTTPException(
             status_code=s.HTTP_400_BAD_REQUEST,
-            detail=dict(msg=f"Failed to create policy {body.name!r} in engine: {e}"),
+            detail=dict(
+                msg=f"Failed to create policy {body.name!r} in engine: {e}"
+            ),
         )
     if not result:
         logger.debug("Failed to create policy in authorization engine.")
@@ -51,7 +55,9 @@ def upsert_one(
         logger.debug(f"Deleted objects from TAuth DB: {result.deleted_count}.")
         raise HTTPException(
             status_code=s.HTTP_400_BAD_REQUEST,
-            detail=dict(msg=f"Failed to create policy {body.name!r} in engine."),
+            detail=dict(
+                msg=f"Failed to create policy {body.name!r} in engine."
+            ),
         )
 
     logger.debug("Inserted policy in authorization engine.")
@@ -89,7 +95,9 @@ def delete_one(id: str) -> None:
         model=AuthorizationPolicyDAO,
         identifier=id,
     )
-    policy_col = AuthorizationPolicyDAO.collection()
+    policy_col = AuthorizationPolicyDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
+    )
     result = policy_col.delete_one({"name": policy.name})
     logger.debug(f"Deleted objects from TAuth DB: {result.deleted_count}.")
 
@@ -99,15 +107,21 @@ def delete_one(id: str) -> None:
         result = authz_engine.delete_policy(
             policy_name=policy.name,
         )
-    except Exception as e:  # TODO: exception abstraction for authz provider errors
+    except (
+        Exception
+    ) as e:  # TODO: exception abstraction for authz provider errors
         raise HTTPException(
             status_code=s.HTTP_400_BAD_REQUEST,
-            detail=dict(msg=f"Failed to delete policy {policy.name!r} in engine: {e}"),
+            detail=dict(
+                msg=f"Failed to delete policy {policy.name!r} in engine: {e}"
+            ),
         )
     if not result:
         logger.debug("Failed to delete policy in authorization engine.")
         raise HTTPException(
             status_code=s.HTTP_400_BAD_REQUEST,
-            detail=dict(msg=f"Failed to delete policy {policy.name!r} in engine."),
+            detail=dict(
+                msg=f"Failed to delete policy {policy.name!r} in engine."
+            ),
         )
     logger.debug("Deleted policy from authorization engine.")

@@ -1,5 +1,9 @@
 from ...utils.errors import EngineException
 
 
-class PermissionNotFound(EngineException):
+class PolicyNotFound(EngineException):
+    pass
+
+
+class RuleNotFound(EngineException):
     pass

@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import Field
 from pymongo import IndexModel
@@ -19,7 +19,7 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
         default_factory=list
     )  # url, client_id, client_secret
     organization_ref: OrganizationRef
-    service_ref: Optional[ServiceRef]  # TODO: AZP claim
+    service_ref: ServiceRef
     type: Literal["auth0", "melt-key", "tauth-key"]
 
     @classmethod
@@ -30,14 +30,18 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     def indexes(cls) -> list[IndexModel]:
         idxs = [
             IndexModel(
-                [("organization_ref.handle", 1), ("type", 1), ("service_ref", 1)],
+                [
+                    ("type", 1),
+                    ("organization_ref.handle", 1),
+                    ("service_ref.handle", 1),
+                ],
                 unique=True,
             ),
             IndexModel([("external_ids.name", 1), ("external_ids.value", 1)]),
         ]
         return idxs
 
-    def get_external_id(self, name: str) -> Optional[str]:
+    def get_external_id(self, name: str) -> str | None:
         if not hasattr(self, "_ext_ids"):
             self._ext_ids = {item.name: item.value for item in self.external_ids}
         return self._ext_ids.get(name)

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any
 
 from fastapi.openapi.models import Example
 from pydantic import BaseModel
@@ -41,9 +41,9 @@ class PermissionOut(BaseModel):
 
 
 class PermissionUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    entity_handle: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
+    entity_handle: str | None = None
 
     @staticmethod
     def get_permission_update_examples():
@@ -67,3 +67,20 @@ class PermissionIntermediate(BaseModel):
     name: str
     description: str
     entity_ref: EntityRef
+
+
+class PermissionContext(BaseModel):
+    name: str
+    entity_handle: str
+
+    def __hash__(self):
+        return hash((self.name, self.entity_handle))
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, PermissionContext):
+            # Equality based on name and entity_handle
+            return (self.name, self.entity_handle) == (
+                other.name,
+                other.entity_handle,
+            )
+        return False

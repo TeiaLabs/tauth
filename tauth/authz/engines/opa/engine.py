@@ -3,6 +3,7 @@ from fastapi import status as s
 from loguru import logger
 from opa_client import OpaClient
 from opa_client.errors import (
+    CheckPermissionError,
     ConnectionsError,
     DeletePolicyError,
     PolicyNotFoundError,
@@ -16,7 +17,7 @@ from tauth.utils import reading
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
 from ...policies.schemas import AuthorizationPolicyIn
-from ..errors import PermissionNotFound
+from ..errors import EngineException, PolicyNotFound, RuleNotFound
 from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import OPASettings
 
@@ -73,7 +74,7 @@ class OPAEngine(AuthorizationInterface):
     def is_authorized(
         self,
         policy_name: str,
-        resource: str,
+        rule: str,
         context: dict | None = None,
         **kwargs,
     ) -> AuthorizationResponse:
@@ -84,11 +85,16 @@ class OPAEngine(AuthorizationInterface):
             opa_result = self.client.check_permission(
                 input_data=opa_context,
                 policy_name=policy_name,
-                rule_name=resource,
+                rule_name=rule,
             )
-        except PolicyNotFoundError as e:
-            logger.error(f"Policy not found in OPA: {e}")
-            raise PermissionNotFound(f"Policy {policy_name} not found")
+        except Exception as e:
+            logger.error(f"Error in OPA: {e}")
+            if isinstance(e, PolicyNotFoundError):
+                raise PolicyNotFound(f"Policy {policy_name} not found")
+            elif isinstance(e, CheckPermissionError):
+                raise RuleNotFound(f"Rule {rule} not found in {policy_name}")
+            else:
+                raise EngineException(f"Error during authorization check {e}")
 
         logger.debug(f"Raw OPA result: {opa_result}")
         # TODO: we should be careful here and revisit this soon

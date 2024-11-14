@@ -362,11 +362,11 @@ We will protect the `GET /foo` endpoint using TAuth's authorization middleware.
 To do this, we'll need to import the dependencies provided by TAuth.
 The `tauth.dependencies.authorization` module provides the following methods to protect endpoints:
 
-- [authorize][tauth.dependencies.authorization.authorize]: FastAPI dependency that can be used to individually protect endpoints.
-- [init_app][tauth.dependencies.authorization.init_app]: FastAPI dependency to run the initial authorization engine setup.
+- [authz][tauth.dependencies.authorization.authz]: FastAPI dependency that can be used to individually protect endpoints.
+- [setup_engine][tauth.dependencies.authorization.init_app]: FastAPI dependency to run the initial authorization engine setup.
 
 !!! warning
-    The `init_app` method from the authorization dependencies **must** be called during app startup, before any authorization procedures occur.
+    The `setup_engine` method from the authorization dependencies **must** be called during app startup, before any authorization procedures occur.
 
 After including the authentication dependency, you still need to determine whether any additional context is needed (and provide it if so).
 In our case, we need to provide the number of times the user has accessed the endpoint.

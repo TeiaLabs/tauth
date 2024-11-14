@@ -1,7 +1,6 @@
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
@@ -21,7 +20,9 @@ from .models import RoleDAO
 from .schemas import RoleIn, RoleIntermediate, RoleOut, RoleUpdate
 
 service_name = Path(__file__).parents[1].name
-router = APIRouter(prefix=f"/{service_name}/roles", tags=[service_name + " 🔐"])
+router = APIRouter(
+    prefix=f"/{service_name}/roles", tags=[service_name + " 🔐"]
+)
 
 
 @router.post("", status_code=s.HTTP_201_CREATED)
@@ -35,26 +36,36 @@ async def create_one(
     logger.debug(f"Fetching entity ref from handle: {role_in.entity_handle!r}")
     entity_ref = EntityDAO.from_handle_to_ref(role_in.entity_handle)
     if not entity_ref:
-        raise HTTPException(s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle")
+        raise HTTPException(
+            s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"
+        )
 
     permission_ids = []
     if role_in.permissions:
         logger.debug("Validating permissions for role creation.")
-        permissions_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
-        permission_list = permissions_coll.find({
-            "name": {"$in": role_in.permissions},
-            "entity_ref.handle": role_in.entity_handle,
-        })
+        permissions_coll = PermissionDAO.collection(
+            alias=Settings.get().REDBABY_ALIAS
+        )
+        permission_list = permissions_coll.find(
+            {
+                "name": {"$in": role_in.permissions},
+                "entity_ref.handle": role_in.entity_handle,
+            }
+        )
         permission_list = list(permission_list)
         if len(role_in.permissions) != len(permission_list):
-            logger.error(f"Invalid permissions for role creation: {role_in.permissions!r} - {permission_list!r}.")
+            logger.error(
+                f"Invalid permissions for role creation: {role_in.permissions!r} - {permission_list!r}."
+            )
             raise HTTPException(
                 status_code=s.HTTP_400_BAD_REQUEST,
                 detail="Invalid permissions provided.",
             )
         permission_names = [p["name"] for p in permission_list]
         permission_ids = [p["_id"] for p in permission_list]
-        logger.debug(f"Permissions: {list(zip(permission_names, permission_ids))}.")
+        logger.debug(
+            f"Permissions: {list(zip(permission_names, permission_ids, strict=False))}."
+        )
 
     role_in.permissions = permission_ids
     schema_in = RoleIntermediate(entity_ref=entity_ref, **role_in.model_dump())
@@ -77,14 +88,20 @@ async def read_one(
     )
 
     # Decode permissions and entity handle
-    permission_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+    permission_coll = PermissionDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
+    )
     permissions = []
     if role.permissions:
-        permission_list = permission_coll.find({"_id": {"$in": role.permissions}})
+        permission_list = permission_coll.find(
+            {"_id": {"$in": role.permissions}}
+        )
         permissions = [PermissionOut(**p) for p in permission_list]
         permissions = sorted(permissions, key=lambda p: p.name)
     role_out = RoleOut(
-        **role.model_dump(by_alias=True, exclude={"permissions", "entity_ref"}),
+        **role.model_dump(
+            by_alias=True, exclude={"permissions", "entity_ref"}
+        ),
         permissions=permissions,
         entity_handle=role.entity_ref.handle,
     )
@@ -96,8 +113,8 @@ async def read_one(
 async def read_many(
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
-    name: Optional[str] = Query(None),
-    entity_handle: Optional[str] = Query(None),
+    name: str | None = Query(None),
+    entity_handle: str | None = Query(None),
 ) -> list[RoleOut]:
     logger.debug(f"Reading roles with filters: {request.query_params}")
     # Decode the URL-encoded query parameters
@@ -124,15 +141,21 @@ async def read_many(
 
     # Decode permissions and entity handle
     roles_out = []
-    permission_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+    permission_coll = PermissionDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
+    )
     for role in roles:
         permissions = []
         if role.permissions:
-            permission_list = permission_coll.find({"_id": {"$in": role.permissions}})
+            permission_list = permission_coll.find(
+                {"_id": {"$in": role.permissions}}
+            )
             permissions = [PermissionOut(**p) for p in permission_list]
             permissions = sorted(permissions, key=lambda p: p.name)
         role_out = RoleOut(
-            **role.model_dump(by_alias=True, exclude={"permissions", "entity_ref"}),
+            **role.model_dump(
+                by_alias=True, exclude={"permissions", "entity_ref"}
+            ),
             permissions=permissions,
             entity_handle=role.entity_ref.handle,
         )
@@ -141,10 +164,14 @@ async def read_many(
 
 
 @router.patch("/{role_id}", status_code=s.HTTP_204_NO_CONTENT)
-@router.patch("/{role_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False)
+@router.patch(
+    "/{role_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False
+)
 async def update(
     role_id: PyObjectId,
-    role_update: RoleUpdate = Body(openapi_examples=RoleUpdate.get_roleupdate_examples()),
+    role_update: RoleUpdate = Body(
+        openapi_examples=RoleUpdate.get_roleupdate_examples()
+    ),
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
     logger.debug(f"Updating role with ID: {role_id!r}.")
@@ -161,7 +188,9 @@ async def update(
     if role_update.entity_handle:
         entity_ref = EntityDAO.from_handle_to_ref(role_update.entity_handle)
         if not entity_ref:
-            raise HTTPException(s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle")
+            raise HTTPException(
+                s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"
+            )
         role.entity_ref = entity_ref
     if role_update.permissions:
         permissions = [PyObjectId(p) for p in role_update.permissions]
@@ -175,8 +204,11 @@ async def update(
         {"$set": role.model_dump()},
     )
 
+
 @router.delete("/{role_id}", status_code=s.HTTP_204_NO_CONTENT)
-@router.delete("/{role_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False)
+@router.delete(
+    "/{role_id}/", status_code=s.HTTP_204_NO_CONTENT, include_in_schema=False
+)
 async def delete(
     role_id: PyObjectId,
     infostar: Infostar = Depends(privileges.is_valid_admin),

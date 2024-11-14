@@ -6,7 +6,7 @@ is_valid_admin - token_name == default
 is_valid_superuser - token_name == default and client_name == $root
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import HTTPException, Request, status
 
@@ -44,7 +44,9 @@ def is_valid_admin(infostar: Infostar) -> bool:
 
 @get_infostar
 def is_valid_superuser(infostar: Infostar) -> bool:
-    return infostar.apikey_name == "default" and infostar.authprovider_org == "/"
+    return (
+        infostar.apikey_name == "default" and infostar.authprovider_org == "/"
+    )
 
 
 @get_infostar

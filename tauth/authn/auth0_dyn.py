@@ -217,7 +217,7 @@ class RequestAuthenticator:
             authprovider_type=authprovider.type,
             authprovider_org=authprovider.organization_ref.handle,
             extra={},
-            service_handle=authprovider.service_ref.handle,  # TODO: azp
+            service_handle=authprovider.service_ref.handle,
             user_handle=user_data["user_email"],
             user_owner_handle=authprovider.organization_ref.handle,
             client_ip=ip,

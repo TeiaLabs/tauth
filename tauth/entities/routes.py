@@ -1,12 +1,14 @@
-import re
 from pathlib import Path
-from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as PathParam
+from fastapi import Query, Request
 from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
+
+from tauth.authz.permissions.models import PermissionDAO
+from tauth.dependencies.authentication import authenticate
 
 from ..authz import privileges
 from ..authz.roles.models import RoleDAO
@@ -39,10 +41,12 @@ async def create_one(
 
 
 @router.post("/{entity_id}", status_code=s.HTTP_200_OK)
-@router.post("/{entitiy_id}/", status_code=s.HTTP_200_OK, include_in_schema=False)
+@router.post(
+    "/{entitiy_id}/", status_code=s.HTTP_200_OK, include_in_schema=False
+)
 async def read_one(
     entity_id: str,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
 ) -> EntityDAO:
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     entity = entity_coll.find_one({"_id": entity_id})
@@ -57,13 +61,12 @@ async def read_one(
 
 
 @router.get("", status_code=s.HTTP_200_OK)
-@router.get("/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_many(
     request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
-    name: Optional[str] = Query(None),
-    external_id_key: Optional[str] = Query(None, alias="external_ids.key"),
-    external_id_value: Optional[str] = Query(None, alias="external_ids.value"),
+    infostar: Infostar = Depends(authenticate),
+    name: str | None = Query(None),
+    external_id_key: str | None = Query(None, alias="external_ids.key"),
+    external_id_value: str | None = Query(None, alias="external_ids.value"),
 ):
     orgs = reading.read_many(
         infostar=infostar,
@@ -74,15 +77,21 @@ async def read_many(
 
 
 @router.post("/{entity_id}/roles", status_code=s.HTTP_201_CREATED)
-@router.post("/{entity_id}/roles/", status_code=s.HTTP_201_CREATED, include_in_schema=False)
+@router.post(
+    "/{entity_id}/roles/",
+    status_code=s.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 async def add_entity_role(
     request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
-    role_id: Optional[PyObjectId] = Query(None),
-    role_name: Optional[str] = Query(None),
+    role_id: PyObjectId | None = Query(None),
+    role_name: str | None = Query(None),
 ):
-    logger.debug(f"Adding role (role_id={role_id!r}, role_name={role_name!r}) to entity {entity_id!r}.")
+    logger.debug(
+        f"Adding role (role_id={role_id!r}, role_name={role_name!r}) to entity {entity_id!r}."
+    )
     if not ((not role_id and role_name) or (role_id and not role_name)):
         raise HTTPException(
             status_code=s.HTTP_400_BAD_REQUEST,
@@ -105,15 +114,6 @@ async def add_entity_role(
         filters["_id"] = role_id
     elif role_name:
         filters["name"] = role_name
-    if entity.owner_ref:
-        logger.debug(f"Entity has owner_ref={entity.owner_ref!r}.")
-        entity_root_org = f"/{entity.owner_ref.handle.split("/")[1]}"
-        entity_root_org = re.escape(entity_root_org)
-        logger.debug(f"Entity's root organization: {entity_root_org!r}.")
-        filters["$or"] = [
-            {"entity_ref.handle": entity.handle},
-            {"entity_ref.handle": {"$regex": f"^{entity_root_org}"}},
-        ]
     else:
         filters["entity_ref.handle"] = entity.handle
     logger.debug(f"Filters to find role: {filters!r}.")
@@ -130,14 +130,16 @@ async def add_entity_role(
         )
     logger.debug(f"Role found: {role!r}.")
     # 409 in case the role is already attached
-    for r in entity.roles:
-        if r.id == role.id:
+    for role_ref in entity.roles:
+        r = RoleDAO.from_ref(role_ref)
+        assert r
+        if r.name == role.name:
             raise HTTPException(
                 status_code=s.HTTP_409_CONFLICT,
                 detail=f"Role {role.name!r} already attached to entity {entity.handle!r}.",
             )
     # Add role to entity
-    role_ref = RoleRef(id=role.id, entity=role.entity_ref)
+    role_ref = RoleRef(id=role.id)
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity.id},
@@ -146,9 +148,10 @@ async def add_entity_role(
     logger.debug(f"Update result: {res!r}.")
     return {
         "msg": "Role added to entity.",
-        "role_id": str(role.id),
+        "role_name": str(role.name),
         "entity_id": str(entity.id),
     }
+
 
 @router.delete(
     "/{entity_id}/roles/{role_id}",
@@ -161,7 +164,7 @@ async def add_entity_role(
 )
 async def remove_entity_role(
     request: Request,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
     role_id: PyObjectId = PathParam(),
 ):
@@ -175,5 +178,78 @@ async def remove_entity_role(
     return {
         "msg": "Role removed from entity.",
         "role_id": str(role_id),
+        "entity_id": str(entity_id),
+    }
+
+
+@router.post("/{entity_id}/permissions", status_code=s.HTTP_201_CREATED)
+async def add_entity_permission(
+    infostar: Infostar = Depends(authenticate),
+    entity_id: str = PathParam(),
+    permission_id: PyObjectId = Query(),
+):
+    logger.debug(f"Adding permission (permission_id={permission_id!r}")
+
+    # Check if entity exists
+    logger.debug(f"Checking if entity {entity_id!r} exists.")
+    entity = await read_one(
+        entity_id=entity_id,
+        infostar=infostar,
+    )
+
+    permission = reading.read_one(
+        infostar=infostar,
+        model=PermissionDAO,
+        identifier=permission_id,
+    )
+    if not permission:
+        raise HTTPException(
+            status_code=s.HTTP_404_NOT_FOUND,
+            detail="Permission not found.",
+        )
+    logger.debug(f"permission found: {permission!r}.")
+    # 409 in case the permission is already attached
+    for p in entity.permissions:
+        if p == permission.id:
+            raise HTTPException(
+                status_code=s.HTTP_409_CONFLICT,
+                detail=f"Permission {permission.name!r} already attached to entity {entity.handle!r}.",
+            )
+    # Add permission to entity
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+    res = entity_coll.update_one(
+        {"_id": entity.id},
+        {"$push": {"permissions": permission.id}},
+    )
+    logger.debug(f"Update result: {res!r}.")
+    return {
+        "msg": "Permission added to entity.",
+        "permission_name": str(permission.name),
+        "entity_id": str(entity.id),
+    }
+
+
+@router.delete(
+    "/{entity_id}/permissions/{permission_id}",
+    status_code=s.HTTP_204_NO_CONTENT,
+)
+async def remove_entity_permission(
+    request: Request,
+    infostar: Infostar = Depends(authenticate),
+    entity_id: str = PathParam(),
+    permission_id: PyObjectId = PathParam(),
+):
+    logger.debug(
+        f"Removing permission {permission_id!r} from entity {entity_id!r}."
+    )
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+    res = entity_coll.update_one(
+        {"_id": entity_id},
+        {"$pull": {"permissions": permission_id}},
+    )
+    logger.debug(f"Update result: {res!r}.")
+    return {
+        "msg": "Permission removed from entity.",
+        "permission_id": str(permission_id),
         "entity_id": str(entity_id),
     }

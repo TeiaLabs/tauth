@@ -1,6 +1,6 @@
 import contextlib
 import secrets
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from fastapi import BackgroundTasks, HTTPException, Request
 from fastapi import status as s
@@ -11,7 +11,7 @@ from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
 from ...entities.models import EntityDAO
-from ...entities.schemas import EntityRef, OrganizationRef
+from ...entities.schemas import EntityRef, OrganizationRef, ServiceRef
 from ...schemas import Creator, Infostar
 from ...schemas.attribute import Attribute
 from ...settings import Settings
@@ -72,7 +72,9 @@ class RequestAuthenticator:
         logger.debug("Assembling Infostar based on Creator.")
         breadcrumbs = creator.client_name.split("/")
         owner_handle = f"/{breadcrumbs[1]}"
-        service_handle = "--".join(breadcrumbs[2:]) if len(breadcrumbs) > 2 else ""
+        service_handle = (
+            "--".join(breadcrumbs[2:]) if len(breadcrumbs) > 2 else ""
+        )
         infostar = Infostar(
             request_id=PyObjectId(),
             apikey_name=creator.token_name,
@@ -96,8 +98,8 @@ class RequestAuthenticator:
 
     @classmethod
     def get_request_creator(
-        cls, token: str, user_email: Optional[str]
-    ) -> tuple[Creator, Optional[EmailStr]]:
+        cls, token: str, user_email: str | None
+    ) -> tuple[Creator, EmailStr | None]:
         """Returns the Creator and token creator user email for a given request."""
         if user_email is not None:
             try:
@@ -119,16 +121,23 @@ class RequestAuthenticator:
                 raise HTTPException(status_code=code, detail=m)
             if not secrets.compare_digest(token, Settings.get().ROOT_API_KEY):
                 print(token_value, Settings.get().ROOT_API_KEY)
-                code, m = s.HTTP_401_UNAUTHORIZED, "Root token does not match env var."
+                code, m = (
+                    s.HTTP_401_UNAUTHORIZED,
+                    "Root token does not match env var.",
+                )
                 raise HTTPException(status_code=code, detail=m)
 
             request_creator_user_email = user_email
         else:
             logger.debug("Using non-root token, validating token in DB.")
-            token_obj = validate_token_against_db(token, client_name, token_name)
+            token_obj = validate_token_against_db(
+                token, client_name, token_name
+            )
             token_creator_user_email = token_obj["created_by"]["user_handle"]
             if user_email is None:
-                request_creator_user_email = token_obj["created_by"]["user_handle"]
+                request_creator_user_email = token_obj["created_by"][
+                    "user_handle"
+                ]
             else:
                 request_creator_user_email = user_email
 
@@ -144,31 +153,37 @@ class RequestAuthenticator:
         cls,
         creator: Creator,
         infostar: Infostar,
-        token_creator_email: Optional[EmailStr],
+        token_creator_email: EmailStr | None,
     ) -> Callable[[], None]:
         logger.debug("Registering user.")
         melt_key_client_extra = Attribute(
             name="melt_key_client", value=creator.client_name
         )
         user_creator_email = (
-            creator.user_email if token_creator_email is None else token_creator_email
+            creator.user_email
+            if token_creator_email is None
+            else token_creator_email
         )
 
         if creator.client_name == "/":
             org_in = EntityDAO(
                 handle="/",
-                owner_ref=None,
                 type="organization",
                 created_by=infostar,
             )
             user_in = EntityDAO(
                 handle=creator.user_email,
-                owner_ref=EntityRef(type="organization", handle="/"),
                 type="user",
                 extra=[melt_key_client_extra],
                 created_by=infostar,
+                owner_ref=EntityRef(
+                    handle=org_in.handle,
+                    type="organization",
+                ),
             )
-            collection = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+            collection = EntityDAO.collection(
+                alias=Settings.get().REDBABY_ALIAS
+            )
             with contextlib.suppress(BulkWriteError):
                 collection.insert_many(
                     [org_in.bson(), user_in.bson()],
@@ -178,7 +193,7 @@ class RequestAuthenticator:
             provider_in = AuthProviderDAO(
                 organization_ref=OrganizationRef(handle="/"),
                 type="melt-key",
-                service_ref=None,
+                service_ref=ServiceRef(handle="tauth"),
                 extra=[Attribute(name="melt_key_client", value="/")],
                 created_by=infostar,
             )
@@ -215,7 +230,12 @@ class RequestAuthenticator:
         collection = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
         if user_creator_email:
             pipeline.append(
-                {"$match": {"user.type": "user", "user.handle": user_creator_email}}
+                {
+                    "$match": {
+                        "user.type": "user",
+                        "user.handle": user_creator_email,
+                    }
+                }
             )
             results = list(collection.aggregate(pipeline))
             if not results:
@@ -252,10 +272,14 @@ class RequestAuthenticator:
 
         def callback():
             logger.debug(f"Adding {creator.client_name!r} client info.")
-            entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+            entity_coll = EntityDAO.collection(
+                alias=Settings.get().REDBABY_ALIAS
+            )
             entity_coll.update_one(
                 filter={"_id": user["_id"]},
-                update={"$addToSet": {"extra": melt_key_client_extra.model_dump()}},
+                update={
+                    "$addToSet": {"extra": melt_key_client_extra.model_dump()}
+                },
             )
 
         return callback

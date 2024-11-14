@@ -14,6 +14,28 @@
     - `name="GROUP_NAME:ROLE_NAME"`
     - `permissions=["read", "write", "add-user", "remove-user"]`
 
+```
+read_allowed_datasources = resources
+
+
+write_allowed_datasources
+for r in resources:
+  if r.role.split(":")[-1] == "datasources_write"
+    write_allowed_datasources.append(r)
+
+
+admin_allowed_datasources
+for r in resources:
+  if r.role.split(":")[-1] == "datasources_admin"
+    write_allowed_datasources.append(r)
+
+
+
+```
+
+
+
+
 - Resource Management:
   - Done via roles
   - Create policies that return filters
@@ -80,8 +102,12 @@ Indices:
     "_id": "...",
     "service": "datasources",
     "collection": "prompts",
-    "role": "mygroup",
+    "role": "mygroup_id",
     "ids": ["ds1", "ds2", ...],
+    "metadata": {
+      "alias": "osf",
+      "other": "..."
+    }
 }
 ```
 

@@ -2,6 +2,8 @@ import httpx
 from fastapi import status as s
 from loguru import logger
 
+from tauth.authz.policies.schemas import ResourceAuthorizationRequest
+
 from ..interface import AuthorizationInterface, AuthorizationResponse
 from .settings import RemoteSettings
 
@@ -29,12 +31,12 @@ class RemoteEngine(AuthorizationInterface):
     def is_authorized(
         self,
         policy_name: str,
-        resource: str,
+        rule: str,
         access_token: str,
         id_token: str | None = None,
         user_email: str | None = None,
         context: dict | None = None,
-        **_,
+        **kwargs,
     ) -> AuthorizationResponse:
         logger.debug(f"Authorizing user using policy {policy_name}")
 
@@ -49,8 +51,22 @@ class RemoteEngine(AuthorizationInterface):
         body = {
             "context": context,
             "policy_name": policy_name,
-            "resource": resource,
+            "rule": rule,
         }
+        resources = kwargs.get("resources")
+        if not resources:
+            pass
+        else:
+            if isinstance(resources, ResourceAuthorizationRequest):
+                body["resources"] = resources.model_dump(mode="json")
+            elif isinstance(resources, dict):
+                body["resources"] = resources
+            else:
+                cls = ResourceAuthorizationRequest
+                cls_path = f"{cls.__module__}.{cls.__name__}"
+                raise ValueError(
+                    f"Resources should be either {cls_path} or a dictionary."
+                )
         body = {k: v for k, v in body.items() if v is not None}
         response = self.client.post("/authz", headers=headers, json=body)
         if response.status_code != s.HTTP_200_OK:
@@ -96,7 +112,10 @@ class RemoteEngine(AuthorizationInterface):
             headers=headers,
             json=body,
         )
-        if response.status_code not in (s.HTTP_201_CREATED, s.HTTP_204_NO_CONTENT):
+        if response.status_code not in (
+            s.HTTP_201_CREATED,
+            s.HTTP_204_NO_CONTENT,
+        ):
             details = response.json()
             logger.warning(f"Failed to upsert policy remotely: {details}")
             return False

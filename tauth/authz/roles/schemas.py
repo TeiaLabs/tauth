@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
 from redbaby.pyobjectid import PyObjectId
@@ -10,14 +8,13 @@ from ..permissions.schemas import PermissionOut
 
 class RoleRef(BaseModel):
     id: PyObjectId
-    entity: EntityRef
 
 
 class RoleIn(BaseModel):
     name: str
     description: str
     entity_handle: str
-    permissions: Optional[list[str]] = Field(default_factory=list)
+    permissions: list[str] | None = Field(default_factory=list)
 
     @staticmethod
     def get_role_examples():
@@ -47,10 +44,10 @@ class RoleIn(BaseModel):
 
 
 class RoleUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    entity_handle: Optional[str] = None
-    permissions: Optional[list[str]] = None
+    name: str | None = None
+    description: str | None = None
+    entity_handle: str | None = None
+    permissions: list[str] | None = None
 
     @staticmethod
     def get_roleupdate_examples():

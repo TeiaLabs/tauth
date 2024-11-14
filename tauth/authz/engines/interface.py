@@ -20,7 +20,7 @@ class AuthorizationInterface(ABC):
     def is_authorized(
         self,
         policy_name: str,
-        resource: str,
+        rule: str,
         context: dict | None = None,
         **kwargs,
     ) -> AuthorizationResponse: ...
