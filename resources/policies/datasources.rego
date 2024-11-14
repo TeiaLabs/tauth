@@ -2,7 +2,7 @@ package tauth.datasources
 
 import rego.v1
 
-import tauth.utils.build_permission_name
+import data.tauth.utils.build_permission_name
 
 admin_resources := _filter_resource(build_permission_name(["ds", "admin"]))
 
