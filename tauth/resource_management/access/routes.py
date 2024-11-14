@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
@@ -71,23 +71,33 @@ async def grant_access(
     body: GrantIn,
     infostar: Infostar = Depends(authenticate),
 ):
-    
-    created_access = controllers.create_one(
-        body=ResourceAccessIn(
-            resource_id=body.resource_id, entity_handle=body.entity_handle
-        ),
-        infostar=infostar
-    )
+    try:
+        created_access = controllers.create_one(
+            body=ResourceAccessIn(
+                resource_id=body.resource_id, entity_handle=body.entity_handle
+            ),
+            infostar=infostar,
+        )
+        logger.debug(f"Created ResourceAccess: {created_access.id}")
+    except HTTPException as e:
+        if e.status_code == 409:
+            logger.debug(
+                f"Entity {body.entity_handle} already has ResourceAccess"
+            )
+            pass
+        else:
+            raise e
+
     entity = EntityDAO.from_handle(body.entity_handle)
     assert entity
-    logger.debug(f"Created ResourceAccess: {created_access.id}")
 
     p = upsert_permission(permission_in=body.permission, infostar=infostar)
-    assert isinstance(p.id, PyObjectId)
     logger.debug(f"Upserted permission: {p.id}")
 
     # add permission to entity
-    await add_entity_permission(entity_id=entity.id, permission_id=p.id)
+    await add_entity_permission(
+        entity_id=entity.id, permission_id=p.id, infostar=infostar
+    )
 
     return {
         "msg": "Granted Access to entity with permission.",
