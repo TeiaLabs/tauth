@@ -1,95 +1,72 @@
-from typing import Any, Optional, Self
+from typing import Any
 
 import jwt as pyjwt
-from cachetools.func import ttl_cache
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from fastapi import BackgroundTasks, HTTPException, Request
-from httpx import Client, HTTPError
+from fastapi import status as s
+from httpx import HTTPError
 from jwt import (
     InvalidSignatureError,
     InvalidTokenError,
     MissingRequiredClaimError,
-    PyJWKClient,
-    PyJWKSet,
 )
 from loguru import logger
-from pydantic import BaseModel
 from redbaby.pyobjectid import PyObjectId
 
-from ..authproviders.models import AuthProviderDAO
-from ..entities.models import EntityDAO
-from ..entities.schemas import EntityIntermediate
-from ..schemas import Creator, Infostar
-from ..utils import creation, reading
-from .utils import TimedCache
-
-
-def get_token_headers(token: str) -> dict[str, Any]:
-    header = pyjwt.get_unverified_header(token)
-    return header
-
-
-def get_token_unverified_claims(token: str) -> dict[str, Any]:
-    claims = pyjwt.decode(token, options={"verify_signature": False})
-    return claims
-
-
-def get_signing_key(kid: str, domain: str) -> Optional[str]:
-    jwk_set = ManyJSONKeySetStore.get_jwks(domain)
-    signing_key = PyJWKClient.match_kid(jwk_set.keys, kid)
-    if isinstance(signing_key, RSAPrivateKey):
-        return signing_key.key.public_key()
-    return signing_key.key if signing_key else None
-
-
-class Auth0Settings(BaseModel):
-    domain: str
-    audience: str
-
-    @classmethod
-    def from_authprovider(cls, authprovider: AuthProviderDAO) -> Self:
-        iss = authprovider.get_external_id("issuer")
-        if not iss:
-            raise MissingRequiredClaimError("iss")
-        aud = authprovider.get_external_id("audience")
-        if not aud:
-            raise MissingRequiredClaimError("aud")
-        return cls(domain=iss, audience=aud)
-
-
-class ManyJSONKeySetStore:
-    @classmethod
-    @ttl_cache(maxsize=32, ttl=60 * 60 * 6)
-    def get_jwks(cls, domain: str) -> PyJWKSet:
-        logger.debug(f"Fetching JWKS from {domain}.")
-        with Client() as client:
-            res = client.get(f"{domain}.well-known/jwks.json")
-        try:
-            res.raise_for_status()
-        except HTTPError as e:
-            logger.error(f"Failed to fetch JWKS from {domain}.")
-            raise e
-
-        return PyJWKSet.from_dict(res.json())
+from ...authproviders.models import AuthProviderDAO
+from ...schemas import Creator, Infostar
+from ...utils import reading
+from ..utils import TimedCache
+from .schemas import OAuth2Settings
+from .utils import (
+    get_signing_key,
+    get_token_headers,
+    get_token_unverified_claims,
+    register_user,
+)
 
 
 class RequestAuthenticator:
+    SUPPORTED_PROVIDERS = ("auth0", "okta")
     CACHE: TimedCache[str, tuple[Infostar, str, dict]] = TimedCache(
         max_size=4096,
         ttl=60 * 60 * 1,  # 1h
     )
 
     @staticmethod
-    def get_authprovider(token_value: str) -> AuthProviderDAO:
-        logger.debug("Getting AuthProvider.")
-        filters: dict[str, Any] = {"type": "auth0"}
+    def get_oauth2_idp(token_value: str) -> str:
+        # Check which provider it's from by inspecting the issuer claim in the ID token
+        # TODO: this should be a database lookup since the issuer can be a custom domain
+        claims = get_token_unverified_claims(token_value)
+        issuer = claims.get("iss")
+        logger.debug(f"Inspecting ID token issuer: {issuer!r}.")
+        if issuer is None:
+            raise HTTPException(
+                status_code=s.HTTP_401_UNAUTHORIZED,
+                detail={"msg": "Missing 'iss' claim in ID token."},
+            )
+        for provider in RequestAuthenticator.SUPPORTED_PROVIDERS:
+            if provider in issuer:
+                logger.debug(f"Authenticating with an {provider!r} provider.")
+                return provider
+
+        raise HTTPException(
+            status_code=s.HTTP_401_UNAUTHORIZED,
+            detail={"msg": "No valid OAuth2 provider found. Got issuer: {issuer!r}."},
+        )
+
+    @staticmethod
+    def get_authprovider(token_value: str, type: str) -> AuthProviderDAO:
+        logger.debug(f"Getting {type!r} AuthProvider.")
+        filters: dict[str, Any] = {"type": type}
 
         token_claims = get_token_unverified_claims(token_value)
 
         matches = []
         if aud := token_claims.get("aud"):
+            if isinstance(aud, str):
+                aud = [aud]
             # We assume that the actual audience is the first element in the list.
-            # The second element is the issuer's "userinfo" endpoint.
+            # Auth0: the second element is the issuer's "userinfo" endpoint.
             matches.append(
                 {
                     "$elemMatch": {"name": "audience", "value": aud[0]},
@@ -110,8 +87,10 @@ class RequestAuthenticator:
                 filters["external_ids"] = matches[0]
 
         provider = reading.read_one_filters(
-            infostar={}, model=AuthProviderDAO, **filters
-        )  # type: ignore
+            infostar={},  # type: ignore
+            model=AuthProviderDAO,
+            **filters,
+        )
         return provider
 
     @staticmethod
@@ -121,12 +100,12 @@ class RequestAuthenticator:
         authprovider: AuthProviderDAO,
     ) -> dict:
         logger.debug("Validating access token.")
-        sets = Auth0Settings.from_authprovider(authprovider)
+        sets = OAuth2Settings.from_authprovider(authprovider)
         kid = token_headers.get("kid")
         if kid is None:
             raise InvalidTokenError("Missing 'kid' header.")
 
-        signing_key = get_signing_key(kid, sets.domain)
+        signing_key = get_signing_key(kid, sets.domain, authprovider.type)
         if signing_key is None:
             raise InvalidSignatureError("No signing key found.")
 
@@ -147,12 +126,12 @@ class RequestAuthenticator:
         authprovider: AuthProviderDAO,
     ) -> dict:
         logger.debug("Validating ID token.")
-        sets = Auth0Settings.from_authprovider(authprovider)
+        sets = OAuth2Settings.from_authprovider(authprovider)
         kid = token_headers.get("kid")
         if kid is None:
             raise InvalidTokenError("Missing 'kid' header.")
 
-        signing_key = get_signing_key(kid, sets.domain)
+        signing_key = get_signing_key(kid, sets.domain, authprovider.type)
         if signing_key is None:
             raise InvalidSignatureError("No signing key found.")
 
@@ -168,10 +147,13 @@ class RequestAuthenticator:
     @staticmethod
     def assemble_user_data(access_claims, id_claims) -> dict:
         logger.debug("Assembling user data.")
-        required_access = ["org_id"]
+        # required_access = ["org_id"]
+        required_access = []
         required_id = ["sub", "email"]
         for required_claims, claims in zip(
-            [required_access, required_id], (access_claims, id_claims)
+            [required_access, required_id],
+            (access_claims, id_claims),
+            strict=True,
         ):
             for c in required_claims:
                 if c not in claims:
@@ -182,17 +164,6 @@ class RequestAuthenticator:
             "user_email": id_claims.get("email"),
         }
         return user_data
-
-    @staticmethod
-    def assemble_creator(infostar: Infostar) -> Creator:
-        logger.debug("Assembling Creator based on Infostar.")
-        c = Creator(
-            client_name=f"{infostar.user_owner_handle}/{infostar.service_handle}",
-            token_name=infostar.apikey_name,
-            user_email=infostar.user_handle,
-            user_ip=infostar.client_ip,
-        )
-        return c
 
     @staticmethod
     def assemble_infostar(
@@ -208,7 +179,10 @@ class RequestAuthenticator:
         else:
             raise HTTPException(
                 500,
-                detail="Client's IP was not found in: request.client.host, X-Tauth-IP, X-Forwarded-For.",
+                detail=(
+                    "Client's IP was not found in: request.client.host, "
+                    "X-Tauth-IP, X-Forwarded-For."
+                ),
             )
 
         infostar = Infostar(
@@ -241,8 +215,8 @@ class RequestAuthenticator:
         else:
             try:
                 header = get_token_headers(token_value)
-
-                authprovider = cls.get_authprovider(token_value)
+                idp_type = cls.get_oauth2_idp(id_token)
+                authprovider = cls.get_authprovider(token_value, idp_type)
                 access_claims = cls.validate_access_token(
                     token_value, header, authprovider
                 )
@@ -270,25 +244,12 @@ class RequestAuthenticator:
             cls.CACHE[key] = (infostar, user_email, auth_provider_org_ref)
 
         request.state.infostar = infostar
-        request.state.creator = cls.assemble_creator(infostar)
+        logger.debug("Assembling Creator based on Infostar.")
+        request.state.creator = Creator.from_infostar(infostar)
 
-        def callback():
-            try:
-                filters = {
-                    "type": "user",
-                    "handle": user_email,
-                    "owner_ref.handle": auth_provider_org_ref["handle"],
-                }
-                reading.read_one_filters(infostar=infostar, model=EntityDAO, **filters)
-            except HTTPException as e:
-                if e.status_code in (404, 409):
-                    user_i = EntityIntermediate(
-                        handle=user_email,
-                        owner_ref=auth_provider_org_ref,  # type: ignore
-                        type="user",
-                    )
-                    creation.create_one(user_i, EntityDAO, infostar=infostar)
-                else:
-                    logger.error(e)
-
-        background_tasks.add_task(callback)
+        background_tasks.add_task(
+            register_user,
+            user_email,
+            auth_provider_org_ref,
+            infostar,
+        )
