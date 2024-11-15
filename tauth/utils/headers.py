@@ -17,7 +17,7 @@ IDTokenHeader = Annotated[
     str | None,
     Header(
         alias="X-ID-Token",
-        description="Auth0 ID token.",
+        description="OpenID Connect Token.",
     ),
 ]
 
@@ -42,11 +42,8 @@ AuthHeaderInjectorParams = Annotated[
 
 
 def auth_headers_injector(
-    auth_fn: Callable[
-        [AuthHeaderInjectorParams], Any | Coroutine[Any, Any, Any]
-    ],
+    auth_fn: Callable[[AuthHeaderInjectorParams], Any | Coroutine[Any, Any, Any]],
 ) -> Callable[[AuthHeaderInjectorParams], Any]:
-
     async def async_wrapper(
         request: Request,
         background_tasks: BackgroundTasks,
