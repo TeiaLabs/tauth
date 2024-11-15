@@ -20,7 +20,7 @@ class AuthProviderDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     )  # url, client_id, client_secret
     organization_ref: OrganizationRef
     service_ref: ServiceRef
-    type: Literal["auth0", "melt-key", "tauth-key"]
+    type: Literal["auth0", "melt-key", "okta", "tauth-key"]
 
     @classmethod
     def collection_name(cls) -> str:

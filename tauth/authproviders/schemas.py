@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic.config import ConfigDict
@@ -12,17 +12,20 @@ class AuthProviderIn(BaseModel):
     external_ids: list[Attribute] = Field(default_factory=list)
     extra: list[Attribute] = Field(default_factory=list)
     organization_name: str
-    service_name: Optional[str] = Field(None)
-    type: Literal["auth0", "melt-key", "tauth-key"]
+    service_name: str | None = Field(None)
+    type: Literal["auth0", "melt-key", "okta", "tauth-key"]
 
     @model_validator(mode="after")
     def check_external_ids(self: Self) -> Self:
-        if self.type == "auth0":
+        if self.type in ["auth0", "okta"]:
             for field in self.external_ids:
                 if field.name == "issuer":
                     if not field.value.startswith("https://"):
                         raise ValueError("Issuer must be an HTTPS URL.")
-                    if not field.value.endswith("/"):
+                    # Remove trailing slashes for all issuers
+                    field.value = field.value.rstrip("/")
+                    # However, Auth0 issuer URLs must end with a slash
+                    if self.type == "auth0":
                         field.value += "/"
         return self
 
@@ -68,12 +71,12 @@ class AuthProviderMoreIn(BaseModel):
     external_ids: list[Attribute] = Field(default_factory=list)
     extra: list[Attribute] = Field(default_factory=list)
     organization_ref: OrganizationRef
-    service_ref: Optional[ServiceRef]
-    type: Literal["auth0", "melt-key", "tauth-key"]
+    service_ref: ServiceRef | None
+    type: Literal["auth0", "melt-key", "okta", "tauth-key"]
 
 
 class AuthProviderRef(BaseModel):
     id: PyObjectId = Field(alias="_id")
     organizaion_ref: OrganizationRef
-    service_ref: Optional[ServiceRef]
-    type: Literal["auth0", "melt-key", "tauth-key"]
+    service_ref: ServiceRef | None
+    type: Literal["auth0", "melt-key", "okta", "tauth-key"]
