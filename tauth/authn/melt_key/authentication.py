@@ -190,19 +190,6 @@ class RequestAuthenticator:
                     ordered=False,
                 )
 
-            provider_in = AuthProviderDAO(
-                organization_ref=OrganizationRef(handle="/"),
-                type="melt-key",
-                service_ref=ServiceRef(handle="tauth"),
-                extra=[Attribute(name="melt_key_client", value="/")],
-                created_by=infostar,
-            )
-            collection = AuthProviderDAO.collection(
-                alias=Settings.get().REDBABY_ALIAS
-            )
-            with contextlib.suppress(DuplicateKeyError):
-                collection.insert_one(provider_in.bson())
-
         org_handle = creator.client_name.split("/")[1]
         pipeline = [
             {"$match": {"type": "organization", "handle": f"/{org_handle}"}},
