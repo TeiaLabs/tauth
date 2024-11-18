@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field, model_validator
 from pydantic.config import ConfigDict
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.entities.schemas import EntityRefIn
+
 from ..schemas.attribute import Attribute
 from .models import OrganizationRef, ServiceRef
 
@@ -11,8 +13,8 @@ from .models import OrganizationRef, ServiceRef
 class AuthProviderIn(BaseModel):
     external_ids: list[Attribute] = Field(default_factory=list)
     extra: list[Attribute] = Field(default_factory=list)
-    organization_name: str
-    service_name: str | None = Field(None)
+    organization_ref: EntityRefIn
+    service_ref: EntityRefIn | None = Field(None)
     type: Literal["auth0", "melt-key", "okta", "tauth-key"]
 
     @model_validator(mode="after")

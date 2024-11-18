@@ -4,7 +4,8 @@ Migration script to convert data from v1 to v2.
 
 import argparse
 from collections import defaultdict
-from typing import Callable, Literal
+from collections.abc import Callable
+from typing import Literal
 
 from loguru import logger
 from pymongo import MongoClient, errors
@@ -114,7 +115,7 @@ def migrate_orgs(
     if obj:
         root_org_ref = EntityDAO(**obj).to_ref()
     else:
-        root_org_ref = EntityRef(handle="/", type="organization")
+        root_org_ref = EntityRef(handle="/", type="organization", owner_handle=None)
     # Query 'tokens' collection for all client names
     client_names = old_db["tokens"].distinct("client_name")
     for client_name in client_names:

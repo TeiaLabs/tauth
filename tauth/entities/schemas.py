@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
@@ -8,6 +8,11 @@ from ..schemas.attribute import Attribute
 
 class EntityRefBase(BaseModel):
     handle: str
+    owner_handle: str | None = None
+
+
+class EntityRefIn(EntityRefBase):
+    pass
 
 
 class EntityRef(EntityRefBase):
@@ -30,7 +35,7 @@ class EntityIn(BaseModel):
     external_ids: list[Attribute] = Field(default_factory=list)
     extra: list[Attribute] = Field(default_factory=list)
     handle: str = Field(..., min_length=3, max_length=50)
-    owner_handle: Optional[str] = Field(None)
+    owner_ref: EntityRefIn | None = Field(None)
     roles: list[str] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]
 
@@ -41,7 +46,7 @@ class EntityIn(BaseModel):
                 description="A root-level organization with no authproviders registered.",
                 value=EntityIn(
                     handle="/orgname",
-                    owner_handle=None,
+                    owner_ref=None,
                     type="organization",
                 ),
             ),
@@ -52,7 +57,7 @@ class EntityIn(BaseModel):
                 ),
                 value=EntityIn(
                     handle="user@orgname.com",
-                    owner_handle="/orgname",
+                    owner_ref=EntityRefIn(handle="/orgname"),
                     type="user",
                 ),
             ),
@@ -64,6 +69,6 @@ class EntityIntermediate(BaseModel):
     external_ids: list[Attribute] = Field(default_factory=list)
     extra: list[Attribute] = Field(default_factory=list)
     handle: str = Field(...)
-    owner_ref: Optional[EntityRef] = Field(None)
+    owner_ref: EntityRef | None = Field(None)
     roles: list[str] = Field(default_factory=list)
     type: Literal["user", "service", "organization"]

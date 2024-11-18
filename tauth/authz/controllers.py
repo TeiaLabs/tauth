@@ -38,7 +38,9 @@ async def authorize(
     if await request.body():
         authz_data.context["request"]["body"] = await request.json()
 
-    entity = EntityDAO.from_handle(handle=infostar.user_handle)
+    entity = EntityDAO.from_handle(
+        handle=infostar.user_handle, owner_handle=infostar.user_owner_handle
+    )
     if not entity:
         message = f"Entity not found for handle: {infostar.user_handle}."
         logger.error(message)

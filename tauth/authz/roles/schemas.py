@@ -2,7 +2,7 @@ from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
 from redbaby.pyobjectid import PyObjectId
 
-from ...entities.schemas import EntityRef
+from ...entities.schemas import EntityRef, EntityRefIn
 from ..permissions.schemas import PermissionOut
 
 
@@ -13,7 +13,7 @@ class RoleRef(BaseModel):
 class RoleIn(BaseModel):
     name: str
     description: str
-    entity_handle: str
+    entity_ref: EntityRefIn
     permissions: list[str] | None = Field(default_factory=list)
 
     @staticmethod
@@ -24,7 +24,7 @@ class RoleIn(BaseModel):
                 value=RoleIn(
                     name="api-admin",
                     description="API Administrator",
-                    entity_handle="/teialabs",
+                    entity_ref=EntityRefIn(handle="/teialabs"),
                 ),
             ),
             "Role with permissions": Example(
@@ -35,7 +35,7 @@ class RoleIn(BaseModel):
                 value=RoleIn(
                     name="api-admin",
                     description="API Administrator",
-                    entity_handle="/teialabs",
+                    entity_ref=EntityRefIn(handle="/teialabs"),
                     permissions=["read", "write", "delete"],
                 ),
             ),
@@ -46,7 +46,7 @@ class RoleIn(BaseModel):
 class RoleUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    entity_handle: str | None = None
+    entity_handle: EntityRefIn | None = None
     permissions: list[str] | None = None
 
     @staticmethod
@@ -65,7 +65,9 @@ class RoleUpdate(BaseModel):
             ),
             "Switch entities": Example(
                 description="Migrate role to another entity.",
-                value=RoleUpdate(entity_handle="/teialabs"),
+                value=RoleUpdate(
+                    entity_handle=EntityRefIn(handle="/teialabs")
+                ),
             ),
         }
         return examples
