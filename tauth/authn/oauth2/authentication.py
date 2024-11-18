@@ -1,5 +1,6 @@
 from typing import Any
 
+import httpx
 import jwt as pyjwt
 from fastapi import BackgroundTasks, HTTPException, Request
 from fastapi import status as s
@@ -33,16 +34,12 @@ class RequestAuthenticator:
     )
 
     @staticmethod
-    def get_oauth2_idp(token_value: str) -> str:
-        # Check which provider it's from by inspecting the issuer claim in the ID token
-        # TODO: this should be a database lookup since the issuer can be a custom domain
-        claims = get_token_unverified_claims(token_value)
-        issuer = claims.get("iss")
-        logger.debug(f"Inspecting ID token issuer: {issuer!r}.")
+    def get_oauth2_idp(issuer: str | None) -> str:
+        logger.debug(f"Inspecting Access token issuer: {issuer!r}.")
         if issuer is None:
             raise HTTPException(
                 status_code=s.HTTP_401_UNAUTHORIZED,
-                detail={"msg": "Missing 'iss' claim in ID token."},
+                detail={"msg": "Missing 'iss' claim in Access token."},
             )
         for provider in RequestAuthenticator.SUPPORTED_PROVIDERS:
             if provider in issuer:
@@ -113,7 +110,7 @@ class RequestAuthenticator:
             token_value,
             signing_key,
             algorithms=[token_headers.get("alg", "RS256")],
-            issuer=sets.domain,
+            issuer=sets.domain,  # must be validated to correctly retrieve ID Token
             audience=sets.audience,
             options={"require": ["exp", "iss", "aud"]},
         )
@@ -145,14 +142,17 @@ class RequestAuthenticator:
         return id_claims
 
     @staticmethod
-    def assemble_user_data(access_claims, id_claims) -> dict:
+    def assemble_user_data(
+        access_claims: dict[str, Any],
+        user_info: dict[str, Any],
+    ) -> dict:
         logger.debug("Assembling user data.")
         # required_access = ["org_id"]
         required_access = []
         required_id = ["sub", "email"]
         for required_claims, claims in zip(
             [required_access, required_id],
-            (access_claims, id_claims),
+            (access_claims, user_info),
             strict=True,
         ):
             for c in required_claims:
@@ -160,8 +160,8 @@ class RequestAuthenticator:
                     raise MissingRequiredClaimError(c)
 
         user_data = {
-            "user_id": id_claims.get("sub"),
-            "user_email": id_claims.get("email"),
+            "user_id": user_info.get("sub"),
+            "user_email": user_info.get("email"),
         }
         return user_data
 
@@ -201,26 +201,37 @@ class RequestAuthenticator:
         return infostar
 
     @classmethod
+    def get_user_info_from_provider(
+        cls,
+        access_token: str,
+        issuer: str,
+    ) -> dict[str, Any]:
+        res = httpx.get(
+            f"{issuer.rstrip("/")}/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        return res.json()
+
+    @classmethod
     def validate(
         cls,
         request: Request,
         token_value: str,
-        id_token: str,
         background_tasks: BackgroundTasks,
     ):
-        key = f"token_value={token_value}&id_token={id_token}"
-        cached_value = cls.CACHE.get(key)
+        cached_value = cls.CACHE.get(token_value)
         if cached_value:
             infostar, user_email, auth_provider_org_ref = cached_value
         else:
             try:
                 header = get_token_headers(token_value)
-                idp_type = cls.get_oauth2_idp(id_token)
+                unverified_claims = get_token_unverified_claims(token_value)
+
+                idp_type = cls.get_oauth2_idp(issuer=unverified_claims.get("iss"))
                 authprovider = cls.get_authprovider(token_value, idp_type)
                 access_claims = cls.validate_access_token(
                     token_value, header, authprovider
                 )
-                id_claims = cls.validate_id_token(id_token, header, authprovider)
             except (
                 MissingRequiredClaimError,
                 InvalidTokenError,
@@ -235,13 +246,16 @@ class RequestAuthenticator:
                         "type": e.__class__.__name__,
                     },
                 )
-
-            user_data = cls.assemble_user_data(access_claims, id_claims)
+            user_info = cls.get_user_info_from_provider(
+                access_token=token_value,
+                issuer=access_claims["iss"],
+            )
+            user_data = cls.assemble_user_data(access_claims, user_info)
             infostar = cls.assemble_infostar(request, user_data, authprovider)
             user_email = user_data["user_email"]
             auth_provider_org_ref = authprovider.organization_ref.model_dump()
 
-            cls.CACHE[key] = (infostar, user_email, auth_provider_org_ref)
+            cls.CACHE[token_value] = (infostar, user_email, auth_provider_org_ref)
 
         request.state.infostar = infostar
         logger.debug("Assembling Creator based on Infostar.")
