@@ -210,6 +210,7 @@ class RequestAuthenticator:
             f"{issuer.rstrip("/")}/userinfo",
             headers={"Authorization": f"Bearer {access_token}"},
         )
+        res.raise_for_status()
         return res.json()
 
     @classmethod
@@ -232,6 +233,10 @@ class RequestAuthenticator:
                 access_claims = cls.validate_access_token(
                     token_value, header, authprovider
                 )
+                user_info = cls.get_user_info_from_provider(
+                    access_token=token_value,
+                    issuer=access_claims["iss"],
+                )
             except (
                 MissingRequiredClaimError,
                 InvalidTokenError,
@@ -246,10 +251,6 @@ class RequestAuthenticator:
                         "type": e.__class__.__name__,
                     },
                 )
-            user_info = cls.get_user_info_from_provider(
-                access_token=token_value,
-                issuer=access_claims["iss"],
-            )
             user_data = cls.assemble_user_data(access_claims, user_info)
             infostar = cls.assemble_infostar(request, user_data, authprovider)
             user_email = user_data["user_email"]
