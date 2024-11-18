@@ -1,15 +1,9 @@
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    FastAPI,
-    HTTPException,
-    Request,
-)
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi import status as s
 from fastapi.security import HTTPAuthorizationCredentials
 
 from tauth.authz import controllers as authz_controllers
+from tauth.authz.engines.remote.engine import RemoteEngine
 from tauth.authz.policies.schemas import AuthorizationDataIn
 from tauth.schemas.infostar import Infostar
 from tauth.settings import Settings
@@ -48,12 +42,16 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
                 detail="Invalid or missing authorization data.",
             )
         if Settings.get().AUTHN_ENGINE == "remote":
-            engine = AuthorizationEngine.get()
+            engine: RemoteEngine = AuthorizationEngine.get() # type: ignore
+            assert authorization
             result = engine.is_authorized(
                 policy_name=authz_data.policy_name,
                 rule=authz_data.rule,
                 context=authz_data.context,
                 resources=authz_data.resources,
+                access_token=authorization.credentials,
+                id_token=id_token,
+                user_email=user_email,
             )
         else:
             result = await authz_controllers.authorize(request, authz_data)
