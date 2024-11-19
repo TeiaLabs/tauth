@@ -58,13 +58,14 @@ async def authorize(
 
     if authz_data.resources:
         logger.debug(
-            f"Getting resources for service: {authz_data.resources.service_handle}."
+            f"Getting resources for service: {authz_data.resources.service_ref.handle}."
         )
         service = EntityDAO.from_handle(
-            handle=authz_data.resources.service_handle
+            handle=authz_data.resources.service_ref.handle,
+            owner_handle=authz_data.resources.service_ref.owner_handle,
         )
         if not service:
-            message = f"Entity not found for handle: {authz_data.resources.service_handle}."
+            message = f"Entity not found for handle: {authz_data.resources.service_ref.handle}."
             logger.error(message)
             raise HTTPException(
                 status_code=s.HTTP_401_UNAUTHORIZED,
@@ -72,7 +73,7 @@ async def authorize(
             )
         resources = get_context_resources(
             entity=entity,
-            service_handle=authz_data.resources.service_handle,
+            service=service,
             resource_collection=authz_data.resources.resource_collection,
         )
         authz_data.context["resources"] = [

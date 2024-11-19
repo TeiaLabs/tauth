@@ -31,18 +31,22 @@ async def create_one(
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
 
-    service_entity = EntityDAO.from_handle(body.service_handle)
+    service_entity = EntityDAO.from_handle(
+        body.service_ref.handle, body.service_ref.owner_handle
+    )
     if not service_entity:
         raise HTTPException(
             status_code=s.HTTP_404_NOT_FOUND,
-            detail=f"Entity with handle {body.service_handle} not found",
+            detail=f"Entity with handle {body.service_ref} not found",
         )
 
     try:
         item = ResourceDAO(
             created_by=infostar,
             service_ref=service_entity.to_ref(),
-            **body.model_dump(exclude={"entity_handle", "role_name"}),
+            **body.model_dump(
+                exclude={"entity_handle", "role_name", "service_ref"}
+            ),
         )
         ResourceDAO.collection(alias=Settings.get().REDBABY_ALIAS).insert_one(
             item.bson()
