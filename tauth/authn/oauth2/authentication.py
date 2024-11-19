@@ -117,31 +117,6 @@ class RequestAuthenticator:
         return access_claims
 
     @staticmethod
-    def validate_id_token(
-        token_value: str,
-        token_headers: dict[str, Any],
-        authprovider: AuthProviderDAO,
-    ) -> dict:
-        logger.debug("Validating ID token.")
-        sets = OAuth2Settings.from_authprovider(authprovider)
-        kid = token_headers.get("kid")
-        if kid is None:
-            raise InvalidTokenError("Missing 'kid' header.")
-
-        signing_key = get_signing_key(kid, sets.domain, authprovider.type)
-        if signing_key is None:
-            raise InvalidSignatureError("No signing key found.")
-
-        id_claims = pyjwt.decode(
-            token_value,
-            signing_key,
-            algorithms=[token_headers.get("alg", "RS256")],
-            issuer=sets.domain,
-            options={"require": ["iss", "exp"], "verify_aud": False},
-        )
-        return id_claims
-
-    @staticmethod
     def assemble_user_data(
         access_claims: dict[str, Any],
         user_info: dict[str, Any],

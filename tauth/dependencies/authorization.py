@@ -33,13 +33,11 @@ def init_router(router: APIRouter, authz_data: AuthorizationDataIn):
 
 
 def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
-
     @auth_headers_injector
     async def _authorize(
         request: Request,
         background_tasks: BackgroundTasks,
         user_email: str | None = None,
-        id_token: str | None = None,
         authorization: HTTPAuthorizationCredentials | None = None,
     ) -> AuthorizationResponse:
         if not authz_data:
@@ -59,9 +57,7 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
             result = await authz_controllers.authorize(request, authz_data)
 
         if not result.authorized:
-            raise HTTPException(
-                status_code=s.HTTP_403_FORBIDDEN, detail=result.details
-            )
+            raise HTTPException(status_code=s.HTTP_403_FORBIDDEN, detail=result.details)
         request.state.authz_result = result
         return result
 
