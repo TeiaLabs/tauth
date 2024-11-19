@@ -3,13 +3,13 @@ from typing import Any
 from fastapi.openapi.models import Example
 from pydantic import BaseModel
 
-from ...entities.schemas import EntityRef
+from ...entities.schemas import EntityRef, EntityRefIn
 
 
 class PermissionIn(BaseModel):
     name: str
     description: str
-    entity_handle: str
+    entity_ref: EntityRefIn
 
     @staticmethod
     def get_permission_create_examples():
@@ -19,7 +19,7 @@ class PermissionIn(BaseModel):
                 value=PermissionIn(
                     name="resource-read",
                     description="Resource read access.",
-                    entity_handle="/teialabs",
+                    entity_ref=EntityRefIn(handle="/teialabs"),
                 ),
             ),
             "API admin access": Example(
@@ -27,7 +27,7 @@ class PermissionIn(BaseModel):
                 value=PermissionIn(
                     name="api-admin",
                     description="API administrator access.",
-                    entity_handle="/teialabs",
+                    entity_ref=EntityRefIn(handle="/teialabs"),
                 ),
             ),
         }
@@ -43,7 +43,7 @@ class PermissionOut(BaseModel):
 class PermissionUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    entity_handle: str | None = None
+    entity_ref: EntityRefIn | None = None
 
     @staticmethod
     def get_permission_update_examples():
@@ -57,7 +57,9 @@ class PermissionUpdate(BaseModel):
             ),
             "Switch entities": Example(
                 description="Migrate permission to another entity.",
-                value=PermissionUpdate(entity_handle="/teialabs"),
+                value=PermissionUpdate(
+                    entity_ref=EntityRefIn(handle="/teialabs")
+                ),
             ),
         }
         return examples

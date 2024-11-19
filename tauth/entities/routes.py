@@ -31,11 +31,22 @@ async def create_one(
     body: EntityIn = Body(openapi_examples=EntityIn.get_entity_examples()),
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
-    if body.owner_handle:
-        owner_ref = EntityDAO.from_handle_to_ref(body.owner_handle)
+    if body.owner_ref:
+        owner_ref = EntityDAO.from_handle_to_ref(
+            body.owner_ref.handle,
+            owner_handle=body.owner_ref.owner_handle,
+        )
+        if not owner_ref:
+            d = {
+                "error": "DocumentNotFound",
+                "msg": "Owner not found.",
+            }
+            raise HTTPException(status_code=404, detail=d)
     else:
         owner_ref = None
-    schema_in = EntityIntermediate(owner_ref=owner_ref, **body.model_dump())
+    schema_in = EntityIntermediate(
+        owner_ref=owner_ref, **body.model_dump(exclude={"owner_ref"})
+    )
     entity = creation.create_one(schema_in, EntityDAO, infostar)
     return GeneratedFields(**entity.model_dump(by_alias=True))
 

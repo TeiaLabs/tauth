@@ -28,7 +28,7 @@ async def create_one(
     body: ResourceAccessIn = Body(),
     infostar: Infostar = Depends(authenticate),
 ) -> GeneratedFields:
-    logger.debug(f"Creating Resource Access for: {body.entity_handle}")
+    logger.debug(f"Creating Resource Access for: {body.entity_ref}")
 
     return controllers.create_one(body, infostar)
 
@@ -74,7 +74,7 @@ async def grant_access(
     try:
         created_access = controllers.create_one(
             body=ResourceAccessIn(
-                resource_id=body.resource_id, entity_handle=body.entity_handle
+                resource_id=body.resource_id, entity_ref=body.entity_ref
             ),
             infostar=infostar,
         )
@@ -82,13 +82,15 @@ async def grant_access(
     except HTTPException as e:
         if e.status_code == 409:
             logger.debug(
-                f"Entity {body.entity_handle} already has ResourceAccess"
+                f"Entity {body.entity_ref} already has ResourceAccess"
             )
             pass
         else:
             raise e
 
-    entity = EntityDAO.from_handle(body.entity_handle)
+    entity = EntityDAO.from_handle(
+        body.entity_ref.handle, body.entity_ref.owner_handle
+    )
     assert entity
 
     p = upsert_permission(permission_in=body.permission, infostar=infostar)

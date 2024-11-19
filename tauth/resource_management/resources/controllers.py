@@ -30,7 +30,7 @@ def read_many(
 
 def get_context_resources(
     entity: EntityDAO,
-    service_handle: str,
+    service: EntityDAO,
     resource_collection: str,
 ) -> Iterable[ResourceContext]:
     """Get context resources
@@ -41,8 +41,21 @@ def get_context_resources(
         resource_collection (str): resource_collection
 
     """
+    entity_filters = {"entity_ref.handle": entity.handle}
+    if entity.owner_ref:
+        entity_filters["entity_ref.owner_handle"] = entity.owner_ref.handle
+
+    resource_filters = {
+        "resource_details.service_ref.handle": service.handle,
+        "resource_details.resource_collection": resource_collection,
+    }
+    if service.owner_ref:
+        resource_filters["resource_details.service_ref.owner_handle"] = (
+            service.owner_ref.handle
+        )
+
     pipeline = [
-        {"$match": {"entity_ref.handle": entity.handle}},
+        {"$match": entity_filters},
         {
             "$lookup": {
                 "from": "resources",
@@ -52,12 +65,7 @@ def get_context_resources(
             }
         },
         {"$unwind": "$resource_details"},
-        {
-            "$match": {
-                "resource_details.service_ref.handle": service_handle,
-                "resource_details.resource_collection": resource_collection,
-            }
-        },
+        {"$match": resource_filters},
     ]
 
     resources: Iterable[ResourceContext] = reading.aggregate(

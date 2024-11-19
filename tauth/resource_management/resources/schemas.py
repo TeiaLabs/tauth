@@ -4,7 +4,7 @@ from fastapi.openapi.models import Example
 from pydantic import BaseModel, Field
 from redbaby.pyobjectid import PyObjectId
 
-from tauth.entities.schemas import EntityRef
+from tauth.entities.schemas import EntityRef, EntityRefIn
 
 
 class Identifier(BaseModel):
@@ -13,7 +13,7 @@ class Identifier(BaseModel):
 
 
 class ResourceIn(BaseModel):
-    service_handle: str
+    service_ref: EntityRefIn
     resource_collection: str
     ids: list[Identifier]
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -24,7 +24,7 @@ class ResourceIn(BaseModel):
             "shared-thread": Example(
                 description="Thread shared between users",
                 value=ResourceIn(
-                    service_handle="/athena-api",
+                    service_ref=EntityRefIn(handle="/athena-api"),
                     resource_collection="threads",
                     ids=[
                         Identifier(id="thread-id", metadata={"alias": "osf"})
@@ -33,8 +33,6 @@ class ResourceIn(BaseModel):
             )
         }
         return examples
-
-    
 
 
 class ResourceUpdate(BaseModel):

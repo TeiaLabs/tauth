@@ -179,6 +179,7 @@ class RequestAuthenticator:
                 owner_ref=EntityRef(
                     handle=org_in.handle,
                     type="organization",
+                    owner_handle=None
                 ),
             )
             collection = EntityDAO.collection(

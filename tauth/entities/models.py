@@ -48,22 +48,41 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
         return idxs
 
     @classmethod
-    def from_handle(cls, handle: str) -> Optional["EntityDAO"]:
-        out = cls.collection(alias="tauth").find_one({"handle": handle})
+    def from_handle(
+        cls, handle: str, owner_handle: str | None
+    ) -> Optional["EntityDAO"]:
+        filters = {"handle": handle}
+        if owner_handle:
+            filters["owner_ref.handle"] = owner_handle
+        out = cls.collection(alias="tauth").find_one(filters)
         if out:
             return EntityDAO(**out)
 
     @classmethod
-    def from_handle_to_ref(cls, handle: str) -> EntityRef | None:
-        entity = cls.from_handle(handle)
+    def from_handle_to_ref(
+        cls, handle: str, owner_handle: str | None
+    ) -> EntityRef | None:
+        entity = cls.from_handle(handle, owner_handle)
         if entity:
-            return EntityRef(type=entity.type, handle=entity.handle)
+            return EntityRef(
+                type=entity.type,
+                handle=entity.handle,
+                owner_handle=(
+                    entity.owner_ref.handle if entity.owner_ref else None
+                ),
+            )
 
     def to_ref(self) -> EntityRef:
-        return EntityRef(type=self.type, handle=self.handle)
+        return EntityRef(
+            type=self.type,
+            handle=self.handle,
+            owner_handle=self.owner_ref.handle if self.owner_ref else None,
+        )
 
     def hashable_fields(self) -> list[str]:
         fields = [self.handle]
+        if self.owner_ref:
+            fields.append(self.owner_ref.handle)
         return fields
 
 

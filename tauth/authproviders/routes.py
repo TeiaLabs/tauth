@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi import status as s
@@ -26,24 +26,32 @@ async def create_one(
     ),
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ):
-    if body.service_name:
-        service_ref = EntityDAO.from_handle_to_ref(body.service_name)
+    if body.service_ref:
+        service_ref = EntityDAO.from_handle_to_ref(
+            handle=body.service_ref.handle,
+            owner_handle=body.service_ref.owner_handle,
+        )
         if not service_ref:
             raise HTTPException(
                 status_code=s.HTTP_404_NOT_FOUND,
-                detail=f"Provided service name {body.service_name!r} not found.",
+                detail=f"Provided service name {body.service_ref!r} not found.",
             )
         service_ref = cast(ServiceRef, service_ref)
         service_ref = ServiceRef(**service_ref.model_dump())
     else:
         service_ref = None
-    org_ref = EntityDAO.from_handle_to_ref(body.organization_name)
+    org_ref = EntityDAO.from_handle_to_ref(
+        handle=body.organization_ref.handle,
+        owner_handle=body.organization_ref.owner_handle,
+    )
     if org_ref is None:
-        raise ValueError(f"Organization {body.organization_name} not found.")
+        raise ValueError(f"Organization {body.organization_ref} not found.")
     org_ref = OrganizationRef(**org_ref.model_dump())
 
     if body.external_ids:
-        external_ids_dict = {item.name: item.value for item in body.external_ids}
+        external_ids_dict = {
+            item.name: item.value for item in body.external_ids
+        }
         issuer = external_ids_dict.get("issuer")
         org_id = external_ids_dict.get("org_id")
 
@@ -79,7 +87,7 @@ async def create_one(
 async def read_many(
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
-    name: Optional[str] = Query(None),
+    name: str | None = Query(None),
 ):
     orgs = reading.read_many(
         infostar=infostar,

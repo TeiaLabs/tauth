@@ -3,6 +3,8 @@ from typing import Literal
 from fastapi.openapi.models import Example
 from pydantic import BaseModel
 
+from tauth.entities.schemas import EntityRefIn
+
 
 class AuthorizationPolicyIn(BaseModel):
     description: str
@@ -12,7 +14,7 @@ class AuthorizationPolicyIn(BaseModel):
 
 
 class ResourceAuthorizationRequest(BaseModel):
-    service_handle: str
+    service_ref: EntityRefIn
     resource_collection: str
 
 

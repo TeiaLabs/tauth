@@ -31,8 +31,11 @@ def read_many_access(
 
     return map(lambda x: ResourceAccessDAO(**x), cursor)
 
+
 def create_one(body: ResourceAccessIn, infostar: Infostar):
-    entity = EntityDAO.from_handle(body.entity_handle)
+    entity = EntityDAO.from_handle(
+        body.entity_ref.handle, body.entity_ref.owner_handle
+    )
 
     if not entity:
         raise HTTPException(

@@ -33,8 +33,11 @@ async def create_one(
     infostar: Infostar = Depends(privileges.is_valid_admin),
 ) -> GeneratedFields:
     logger.debug(f"Creating role: {role_in}")
-    logger.debug(f"Fetching entity ref from handle: {role_in.entity_handle!r}")
-    entity_ref = EntityDAO.from_handle_to_ref(role_in.entity_handle)
+    logger.debug(f"Fetching entity ref from handle: {role_in.entity_ref!r}")
+    entity_ref = EntityDAO.from_handle_to_ref(
+        handle=role_in.entity_ref.handle,
+        owner_handle=role_in.entity_ref.owner_handle,
+    )
     if not entity_ref:
         raise HTTPException(
             s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"
@@ -49,7 +52,7 @@ async def create_one(
         permission_list = permissions_coll.find(
             {
                 "name": {"$in": role_in.permissions},
-                "entity_ref.handle": role_in.entity_handle,
+                "entity_ref.handle": role_in.entity_ref.handle,
             }
         )
         permission_list = list(permission_list)
@@ -68,7 +71,9 @@ async def create_one(
         )
 
     role_in.permissions = permission_ids
-    schema_in = RoleIntermediate(entity_ref=entity_ref, **role_in.model_dump())
+    schema_in = RoleIntermediate(
+        entity_ref=entity_ref, **role_in.model_dump(exclude={"entity_ref"})
+    )
     role = creation.create_one(schema_in, RoleDAO, infostar=infostar)
     return GeneratedFields(**role.model_dump(by_alias=True))
 
@@ -186,7 +191,10 @@ async def update(
     if role_update.description:
         role.description = role_update.description
     if role_update.entity_handle:
-        entity_ref = EntityDAO.from_handle_to_ref(role_update.entity_handle)
+        entity_ref = EntityDAO.from_handle_to_ref(
+            handle=role_update.entity_handle.handle,
+            owner_handle=role_update.entity_handle.owner_handle,
+        )
         if not entity_ref:
             raise HTTPException(
                 s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"

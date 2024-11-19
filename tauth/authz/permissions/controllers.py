@@ -82,14 +82,18 @@ def read_many_permissions(
 
 
 def upsert_permission(permission_in: PermissionIn, infostar: Infostar):
-    entity_ref = EntityDAO.from_handle_to_ref(permission_in.entity_handle)
+    entity_ref = EntityDAO.from_handle_to_ref(
+        permission_in.entity_ref.handle,
+        owner_handle=permission_in.entity_ref.owner_handle,
+    )
 
     if not entity_ref:
         raise HTTPException(
             s.HTTP_400_BAD_REQUEST, detail="Invalid entity handle"
         )
     schema_in = PermissionIntermediate(
-        entity_ref=entity_ref, **permission_in.model_dump()
+        entity_ref=entity_ref,
+        **permission_in.model_dump(exclude={"entity_ref"}),
     )
     model = PermissionDAO(**schema_in.model_dump(), created_by=infostar)
 
