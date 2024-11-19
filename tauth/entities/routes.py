@@ -202,11 +202,7 @@ async def add_entity_permission(
         model=PermissionDAO,
         identifier=permission_id,
     )
-    if not permission:
-        raise HTTPException(
-            status_code=s.HTTP_404_NOT_FOUND,
-            detail="Permission not found.",
-        )
+
     logger.debug(f"permission found: {permission!r}.")
     # 409 in case the permission is already attached
     for p in entity.permissions:

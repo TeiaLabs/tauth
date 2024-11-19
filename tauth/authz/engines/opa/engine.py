@@ -12,7 +12,7 @@ from opa_client.errors import (
 from redbaby.pyobjectid import PyObjectId
 
 from tauth.authz.policies.models import AuthorizationPolicyDAO
-from tauth.utils import reading
+from tauth.settings import Settings
 
 from ....schemas import Infostar
 from ...policies.controllers import upsert_one
@@ -48,8 +48,12 @@ class OPAEngine(AuthorizationInterface):
         logger.debug("OPA Engine is running.")
 
     def _initialize_db_policies(self):
-        policies = reading.read_many(
-            infostar=SYSTEM_INFOSTAR, model=AuthorizationPolicyDAO
+        policies = AuthorizationPolicyDAO.find(
+            filter={},
+            alias=Settings.get().REDBABY_ALIAS,
+            validate=True,
+            lazy=False,
+            sort=[("created_at", -1)]
         )
         logger.info(
             f"Loading DB policies into OPA. Policies loaded: {len(policies)}"
