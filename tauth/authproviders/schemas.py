@@ -39,8 +39,7 @@ class AuthProviderIn(BaseModel):
                         "summary": "MELT API Key (Teia Labs)",
                         "description": "MELT API Keys of the form `MELT_<organization>/[service]--<key_name>--<key_id>`.",
                         "value": {
-                            "organization_name": "/teialabs",
-                            # "service_name": "",
+                            "organization_ref": {"handle": "/teialabs"},
                             "type": "melt-key",
                         },
                     },
@@ -58,8 +57,12 @@ class AuthProviderIn(BaseModel):
                                     "value": "api://allai.chat.webui",
                                 },
                             ],
-                            "organization_name": "/teialabs",
-                            "service_name": "athena-api",
+                            "organization_ref": {
+                                "handle": "/teialabs",
+                            },
+                            "service_ref": {
+                                "handle": "athena-api",
+                            },
                             "type": "auth0",
                         },
                     },
