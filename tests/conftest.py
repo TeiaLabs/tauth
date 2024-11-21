@@ -80,11 +80,6 @@ def access_token() -> str:
 
 
 @pytest.fixture(scope="session")
-def id_token() -> str:
-    return "eyJhbGciOiJSUzI1NiIsImtpZCI6IlFodUdSLWZ5aWttVGVOaEVCYzRDYnozUVhrOHdNWm10R0NPQjNPcHlMVm8iLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3Rlc3QvIiwiYXVkIjoiaHR0cHM6Ly90ZXN0LyIsImV4cCI6MjE0NzQ4MzY0Nywib3JnX2lkIjoidGVzdCIsInN1YiI6InRlc3QiLCJlbWFpbCI6InRlc3RAZ21haWwuY29tIn0.SkhvwwVibrFktqeISs0soMI0gFzJWnN2RqtLiNSYxEydGacwNimKZ9GTiz01m0gVzKbcTt4hV567ohCCvVU969FFRD-9UmtoTvG9gSE6WnJORryKq5UrNKAjU6TP07Y3zy2FOVOCrO-4y7c04rCAPA6oeL2JxLpf0n9t2D1rzsX7YpdIGWxyFTNcaxUwzx3x4f0NXtQuu-HN07OumA5dPa68Xq8zAheOFYx91O_RTRYXr236KKy7oytoGdl7yFz-p4nICycuG-RllYcOCwxHUxN3m77DAgjeiIdHLulpL6FkSmMFTdXr-cwkddBIlCwy3nMdQDbBv3NBlu6V-kcwbw"
-
-
-@pytest.fixture(scope="session")
 def jwk() -> dict:
     return {
         "keys": [

@@ -42,7 +42,6 @@ Here is an example of a request to the `/authn` endpoint:
 curl -X POST \
   https://tauth.allai.digital/authn \
   -H 'Authorization: Bearer <token>' \
-  -H 'X-ID-Token: <id_token>' \
   -H 'X-User-Email: <user_email>'
 ```
 

@@ -3,7 +3,7 @@ from typing import Any
 from jwt import PyJWKSet
 from pytest_mock import MockerFixture
 
-from tauth.auth.auth0_dyn import RequestAuthenticator
+from tauth.authn.auth0_dyn import RequestAuthenticator
 
 
 class AuthProviderMock:
@@ -34,11 +34,11 @@ class RequestMock:
         self.client = None
 
 
-def test_auth0_dyn(access_token: str, id_token: str, jwk: dict, mocker: MockerFixture):
-    provider_target_fn = "tauth.auth.auth0_dyn.RequestAuthenticator.get_authprovider"
+def test_auth0_dyn(access_token: str, jwk: dict, mocker: MockerFixture):
+    provider_target_fn = "tauth.authn.auth0_dyn.RequestAuthenticator.get_authprovider"
     mocker.patch(target=provider_target_fn, new=lambda *_, **__: AuthProviderMock)
 
-    jwk_target_fn = "tauth.auth.auth0_dyn.ManyJSONKeySetStore.get_jwks"
+    jwk_target_fn = "tauth.authn.auth0_dyn.ManyJSONKeySetStore.get_jwks"
     mocker.patch(target=jwk_target_fn, new=lambda *_, **__: PyJWKSet.from_dict(jwk))
 
     org_db_query_fn = "tauth.organizations.controllers.read_one"
@@ -46,5 +46,5 @@ def test_auth0_dyn(access_token: str, id_token: str, jwk: dict, mocker: MockerFi
 
     request = RequestMock()
 
-    RequestAuthenticator.validate(request, access_token, id_token)  # type: ignore
+    RequestAuthenticator.validate(request, access_token)  # type: ignore
     assert True

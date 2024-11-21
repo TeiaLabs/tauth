@@ -70,7 +70,6 @@ Here is an example of a request to the `/authz` endpoint:
 curl -X POST \
   https://tauth.allai.digital/authz \
   -H 'Authorization: Bearer <token>' \
-  -H 'X-ID-Token: <id_token>' \
   -H 'X-User-Email: <user_email>' \
   -d '{
     "policy_name": "string",

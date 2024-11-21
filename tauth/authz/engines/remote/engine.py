@@ -33,16 +33,14 @@ class RemoteEngine(AuthorizationInterface):
         policy_name: str,
         rule: str,
         access_token: str,
-        id_token: str | None = None,
-        user_email: str | None = None,
         context: dict | None = None,
+        user_email: str | None = None,
         **kwargs,
     ) -> AuthorizationResponse:
         logger.debug(f"Authorizing user using policy {policy_name}")
 
         headers = {
             "Authorization": self._get_authorization_header(access_token),
-            "X-ID-Token": id_token,
             "X-User-Email": user_email,
         }
         headers = {k: v for k, v in headers.items() if v is not None}
@@ -88,7 +86,6 @@ class RemoteEngine(AuthorizationInterface):
         policy_name: str,
         policy_content: str,
         access_token: str,
-        id_token: str | None = None,
         user_email: str | None = None,
         policy_description: str = "",
         **kwargs,
@@ -97,7 +94,6 @@ class RemoteEngine(AuthorizationInterface):
 
         headers = {
             "Authorization": self._get_authorization_header(access_token),
-            "X-ID-Token": id_token,
             "X-User-Email": user_email,
         }
         headers = {k: v for k, v in headers.items() if v is not None}

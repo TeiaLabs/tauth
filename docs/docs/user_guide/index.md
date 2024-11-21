@@ -13,3 +13,4 @@ Next, explore the concepts and features of TAuth by reading the following pages:
 - [Infostar](./infostar.md)
 - [Authentication](./authn.md)
 - [Authorization](./authz.md)
+- [Glossary](./glossary.md)
