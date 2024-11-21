@@ -34,7 +34,7 @@ async def authorize(
     authz_engine = AuthorizationEngine.get()
     authz_data.context["infostar"] = infostar.model_dump(mode="json")
 
-    authz_data.context["request"] = get_request_context(request)
+    authz_data.context["tauth_request"] = get_request_context(request)
     if await request.body():
         authz_data.context["request"]["body"] = await request.json()
 

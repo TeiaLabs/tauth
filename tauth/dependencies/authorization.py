@@ -1,10 +1,18 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+)
 from fastapi import status as s
 from fastapi.security import HTTPAuthorizationCredentials
 
 from tauth.authz import controllers as authz_controllers
 from tauth.authz.engines.remote.engine import RemoteEngine
 from tauth.authz.policies.schemas import AuthorizationDataIn
+from tauth.authz.utils import get_request_context
 from tauth.schemas.infostar import Infostar
 from tauth.settings import Settings
 
@@ -41,8 +49,9 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
                 status_code=s.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Invalid or missing authorization data.",
             )
+        authz_data.context["request"] = get_request_context(request)
         if Settings.get().AUTHN_ENGINE == "remote":
-            engine: RemoteEngine = AuthorizationEngine.get() # type: ignore
+            engine: RemoteEngine = AuthorizationEngine.get()  # type: ignore
             assert authorization
             result = engine.is_authorized(
                 policy_name=authz_data.policy_name,
