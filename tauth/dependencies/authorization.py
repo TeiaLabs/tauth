@@ -49,7 +49,7 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
                 status_code=s.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Invalid or missing authorization data.",
             )
-        authz_data.context["request"] = get_request_context(request)
+        authz_data.context["request"] = await get_request_context(request)
         if Settings.get().AUTHN_ENGINE == "remote":
             engine: RemoteEngine = AuthorizationEngine.get()  # type: ignore
             assert authorization

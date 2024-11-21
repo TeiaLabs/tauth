@@ -34,9 +34,7 @@ async def authorize(
     authz_engine = AuthorizationEngine.get()
     authz_data.context["infostar"] = infostar.model_dump(mode="json")
 
-    authz_data.context["tauth_request"] = get_request_context(request)
-    if await request.body():
-        authz_data.context["tauth_request"]["body"] = await request.json()
+    authz_data.context["tauth_request"] = await get_request_context(request)
 
     entity = EntityDAO.from_handle(
         handle=infostar.user_handle, owner_handle=infostar.user_owner_handle
