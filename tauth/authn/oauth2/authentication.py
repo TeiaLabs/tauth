@@ -95,14 +95,14 @@ class RequestAuthenticator:
         token_value: str,
         token_headers: dict[str, Any],
         authprovider: AuthProviderDAO,
+        oauth2_settings: OAuth2Settings,
     ) -> dict:
         logger.debug("Validating access token.")
-        sets = OAuth2Settings.from_authprovider(authprovider)
         kid = token_headers.get("kid")
         if kid is None:
             raise InvalidTokenError("Missing 'kid' header.")
 
-        signing_key = get_signing_key(kid, sets.domain, authprovider.type)
+        signing_key = get_signing_key(kid, oauth2_settings.jwks_url, authprovider.type)
         if signing_key is None:
             raise InvalidSignatureError("No signing key found.")
 
@@ -110,8 +110,8 @@ class RequestAuthenticator:
             token_value,
             signing_key,
             algorithms=[token_headers.get("alg", "RS256")],
-            issuer=sets.domain,  # must be validated to correctly retrieve ID Token
-            audience=sets.audience,
+            issuer=oauth2_settings.domain,
+            audience=oauth2_settings.audience,
             options={"require": ["exp", "iss", "aud"]},
         )
         return access_claims
@@ -179,16 +179,10 @@ class RequestAuthenticator:
     def get_user_info_from_provider(
         cls,
         access_token: str,
-        issuer: str,
-        user_info_url: str | None = None,
+        oauth2_settings: OAuth2Settings,
     ) -> dict[str, Any]:
-        if not user_info_url:
-            # Default URL if no other is informed, this info is
-            # retrieved from providers extra fields
-            user_info_url = f"{issuer.rstrip("/")}/userinfo"
-
         res = httpx.get(
-            user_info_url,
+            oauth2_settings.userinfo_url,
             headers={"Authorization": f"Bearer {access_token}"},
         )
         res.raise_for_status()
@@ -211,19 +205,17 @@ class RequestAuthenticator:
 
                 idp_type = cls.get_oauth2_idp(issuer=unverified_claims.get("iss"))
                 authprovider = cls.get_authprovider(token_value, idp_type)
-                access_claims = cls.validate_access_token(
-                    token_value, header, authprovider
-                )
-                user_info_url = None
-                for extra in authprovider.extra:
-                    if extra.name == "user_info_url":
-                        user_info_url = extra.value
-                        break
+                oauth2_settings = OAuth2Settings.from_authprovider(authprovider)
 
+                access_claims = cls.validate_access_token(
+                    token_value=token_value,
+                    token_headers=header,
+                    authprovider=authprovider,
+                    oauth2_settings=oauth2_settings,
+                )
                 user_info = cls.get_user_info_from_provider(
                     access_token=token_value,
-                    issuer=access_claims["iss"],
-                    user_info_url=user_info_url,
+                    oauth2_settings=oauth2_settings,
                 )
             except (
                 MissingRequiredClaimError,

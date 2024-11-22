@@ -18,23 +18,15 @@ from ...utils import creation, reading
 class ManyJSONKeySetStore:
     @classmethod
     @ttl_cache(maxsize=32, ttl=60 * 60 * 6)
-    def get_jwks(cls, type: str, domain: str) -> PyJWKSet:
-        logger.debug(f"Fetching JWKS for {type!r} OAuth2 provider from {domain!r}.")
-        # Clean up the domain
-        domain = domain.strip("/")
-        if type == "auth0":
-            final_domain = f"{domain}/.well-known/jwks.json"
-        elif type == "okta":
-            final_domain = f"{domain}/oauth2/v1/keys"
-        else:
-            raise ValueError(f"Unknown OAuth2 provider type: {type!r}.")
+    def get_jwks(cls, type: str, jwks_url: str) -> PyJWKSet:
+        logger.debug(f"Fetching JWKS for {type!r} OAuth2 provider from {jwks_url!r}.")
         with Client() as client:
-            logger.debug(f"Fetching JWKS from {final_domain}.")
-            res = client.get(final_domain)
+            logger.debug(f"Fetching JWKS from {jwks_url}.")
+            res = client.get(jwks_url)
         try:
             res.raise_for_status()
         except HTTPError as e:
-            logger.error(f"Failed to fetch JWKS from {domain}.")
+            logger.error(f"Failed to fetch JWKS from {jwks_url}.")
             raise e
 
         return PyJWKSet.from_dict(res.json())
@@ -50,8 +42,8 @@ def get_token_unverified_claims(token: str) -> dict[str, Any]:
     return claims
 
 
-def get_signing_key(kid: str, domain: str, type: str) -> str | None:
-    jwk_set = ManyJSONKeySetStore.get_jwks(type, domain)
+def get_signing_key(kid: str, jwks_url: str, type: str) -> str | None:
+    jwk_set = ManyJSONKeySetStore.get_jwks(type, jwks_url)
     signing_key = PyJWKClient.match_kid(jwk_set.keys, kid)
     if isinstance(signing_key, RSAPrivateKey):
         return signing_key.key.public_key()
