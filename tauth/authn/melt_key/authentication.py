@@ -1,17 +1,17 @@
 import contextlib
 import secrets
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException, Request
 from fastapi import status as s
 from loguru import logger
 from pydantic import validate_email
-from pymongo.errors import BulkWriteError, DuplicateKeyError
+from pymongo.errors import BulkWriteError
 from redbaby.pyobjectid import PyObjectId
 
-from ...authproviders.models import AuthProviderDAO
 from ...entities.models import EntityDAO
-from ...entities.schemas import EntityRef, OrganizationRef, ServiceRef
+from ...entities.schemas import EntityRef
 from ...schemas import Creator, Infostar
 from ...schemas.attribute import Attribute
 from ...settings import Settings
@@ -72,9 +72,7 @@ class RequestAuthenticator:
         logger.debug("Assembling Infostar based on Creator.")
         breadcrumbs = creator.client_name.split("/")
         owner_handle = f"/{breadcrumbs[1]}"
-        service_handle = (
-            "--".join(breadcrumbs[2:]) if len(breadcrumbs) > 2 else ""
-        )
+        service_handle = "--".join(breadcrumbs[2:]) if len(breadcrumbs) > 2 else ""
         infostar = Infostar(
             request_id=PyObjectId(),
             apikey_name=creator.token_name,
@@ -130,14 +128,10 @@ class RequestAuthenticator:
             request_creator_user_email = user_email
         else:
             logger.debug("Using non-root token, validating token in DB.")
-            token_obj = validate_token_against_db(
-                token, client_name, token_name
-            )
+            token_obj = validate_token_against_db(token, client_name, token_name)
             token_creator_user_email = token_obj["created_by"]["user_handle"]
             if user_email is None:
-                request_creator_user_email = token_obj["created_by"][
-                    "user_handle"
-                ]
+                request_creator_user_email = token_obj["created_by"]["user_handle"]
             else:
                 request_creator_user_email = user_email
 
@@ -160,9 +154,7 @@ class RequestAuthenticator:
             name="melt_key_client", value=creator.client_name
         )
         user_creator_email = (
-            creator.user_email
-            if token_creator_email is None
-            else token_creator_email
+            creator.user_email if token_creator_email is None else token_creator_email
         )
 
         if creator.client_name == "/":
@@ -181,14 +173,18 @@ class RequestAuthenticator:
                     type="organization",
                 ),
             )
-            collection = EntityDAO.collection(
-                alias=Settings.get().REDBABY_ALIAS
-            )
+            collection = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
             with contextlib.suppress(BulkWriteError):
                 collection.insert_many(
                     [org_in.bson(), user_in.bson()],
                     ordered=False,
                 )
+
+        authprovider_match: dict[str, Any] = {
+            "authprovider.type": "melt-key",
+        }
+        if infostar.service_handle:
+            authprovider_match["service_ref.handle"] = (infostar.service_handle,)
 
         org_handle = creator.client_name.split("/")[1]
         pipeline = [
@@ -202,7 +198,7 @@ class RequestAuthenticator:
                 }
             },
             {"$unwind": "$authprovider"},
-            {"$match": {"authprovider.type": "melt-key"}},
+            {"$match": authprovider_match},
             {
                 "$lookup": {
                     "from": "entities",
@@ -259,14 +255,10 @@ class RequestAuthenticator:
 
         def callback():
             logger.debug(f"Adding {creator.client_name!r} client info.")
-            entity_coll = EntityDAO.collection(
-                alias=Settings.get().REDBABY_ALIAS
-            )
+            entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
             entity_coll.update_one(
                 filter={"_id": user["_id"]},
-                update={
-                    "$addToSet": {"extra": melt_key_client_extra.model_dump()}
-                },
+                update={"$addToSet": {"extra": melt_key_client_extra.model_dump()}},
             )
 
         return callback
