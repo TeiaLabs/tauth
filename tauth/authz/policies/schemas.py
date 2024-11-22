@@ -1,7 +1,7 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi.openapi.models import Example
-from pydantic import BaseModel
+from pydantic import AfterValidator, BaseModel
 
 from tauth.entities.schemas import EntityRefIn
 
@@ -18,8 +18,26 @@ class ResourceAuthorizationRequest(BaseModel):
     resource_collection: str
 
 
+def check_reserved_keys(context: dict):
+    reserved_keywords = {
+        "infostar",
+        "tauth_request",
+        "entity",
+        "permissions",
+        "resources",
+    }
+    if any(key in reserved_keywords for key in context):
+        violations = sorted(reserved_keywords & context.keys())
+        raise ValueError(f"Context contains reserved keywords: {violations}")
+
+    return context
+
+
+Context = Annotated[dict, AfterValidator(lambda x: check_reserved_keys(x))]
+
+
 class AuthorizationDataIn(BaseModel):
-    context: dict
+    context: Context
     policy_name: str
     rule: str
     resources: ResourceAuthorizationRequest | None = None

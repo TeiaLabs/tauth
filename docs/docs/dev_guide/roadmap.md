@@ -5,12 +5,6 @@ The tasks are listed in priority order.
 
 ## Tasks
 
-- Create glossary in docs
-
-- Create reserved keywords for authorization context creation
-  - Example: `entity`, `request`, `permission`, etc.
-  - Check if OPA sanitizes inputs
-
 - New API keys
   - Named keys
   - Rotation
