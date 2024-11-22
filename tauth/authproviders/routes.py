@@ -49,9 +49,7 @@ async def create_one(
     org_ref = OrganizationRef(**org_ref.model_dump())
 
     if body.external_ids:
-        external_ids_dict = {
-            item.name: item.value for item in body.external_ids
-        }
+        external_ids_dict = {item.name: item.value for item in body.external_ids}
         issuer = external_ids_dict.get("issuer")
         org_id = external_ids_dict.get("org_id")
 
@@ -74,7 +72,7 @@ async def create_one(
                 )
 
     in_schema = AuthProviderMoreIn(
-        **body.model_dump(),
+        **body.model_dump(exclude={"service_ref", "organization_ref"}),
         service_ref=service_ref,
         organization_ref=org_ref,
     )
