@@ -180,9 +180,15 @@ class RequestAuthenticator:
         cls,
         access_token: str,
         issuer: str,
+        user_info_url: str | None = None,
     ) -> dict[str, Any]:
+        if not user_info_url:
+            # Default URL if no other is informed, this info is
+            # retrieved from providers extra fields
+            user_info_url = f"{issuer.rstrip("/")}/userinfo"
+
         res = httpx.get(
-            f"{issuer.rstrip("/")}/userinfo",
+            user_info_url,
             headers={"Authorization": f"Bearer {access_token}"},
         )
         res.raise_for_status()
@@ -208,9 +214,16 @@ class RequestAuthenticator:
                 access_claims = cls.validate_access_token(
                     token_value, header, authprovider
                 )
+                user_info_url = None
+                for extra in authprovider.extra:
+                    if extra.name == "user_info_url":
+                        user_info_url = extra.value
+                        break
+
                 user_info = cls.get_user_info_from_provider(
                     access_token=token_value,
                     issuer=access_claims["iss"],
+                    user_info_url=user_info_url,
                 )
             except (
                 MissingRequiredClaimError,
