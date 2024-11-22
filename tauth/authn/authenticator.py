@@ -20,7 +20,6 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
         request: Request,
         background_tasks: BackgroundTasks,
         user_email: str | None = None,
-        id_token: str | None = None,
         authorization: HTTPAuthorizationCredentials | None = None,
     ) -> None:
         req_path: str = request.scope["path"]
@@ -50,7 +49,6 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
             remote.RequestAuthenticator.validate(
                 request=request,
                 access_token=token_value,
-                id_token=id_token,
                 user_email=user_email,
             )
             return
@@ -65,16 +63,9 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
             )
             return
 
-        if id_token is None:
-            raise HTTPException(
-                status_code=s.HTTP_401_UNAUTHORIZED,
-                detail={"msg": "Missing ID token."},
-            )
-
         oauth2.RequestAuthenticator.validate(
             request=request,
             token_value=token_value,
-            id_token=id_token,
             background_tasks=background_tasks,
         )
 

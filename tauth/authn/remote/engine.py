@@ -16,12 +16,10 @@ class RequestAuthenticator:
         cls,
         request: Request,
         access_token: str,
-        id_token: str | None,
         user_email: str | None,
     ):
         headers = {
             "Authorization": f"Bearer {access_token}",
-            "X-ID-Token": id_token,
             "X-User-Email": user_email,
         }
         headers = {k: v for k, v in headers.items() if v is not None}

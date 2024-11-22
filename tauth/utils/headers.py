@@ -13,14 +13,6 @@ UserEmail = Annotated[
     ),
 ]
 
-IDTokenHeader = Annotated[
-    str | None,
-    Header(
-        alias="X-ID-Token",
-        description="OpenID Connect Token.",
-    ),
-]
-
 AccessTokenHeader = Annotated[
     HTTPAuthorizationCredentials | None,
     Security(HTTPBase(scheme="bearer", auto_error=False)),
@@ -29,7 +21,6 @@ AccessTokenHeader = Annotated[
 AuthHeaders = Annotated[
     *tuple[
         UserEmail,
-        IDTokenHeader,
         AccessTokenHeader,
     ],
     "Headers required for authentication.",
@@ -48,14 +39,12 @@ def auth_headers_injector(
         request: Request,
         background_tasks: BackgroundTasks,
         user_email: UserEmail = None,
-        id_token: IDTokenHeader = None,
         authorization: AccessTokenHeader = None,
     ):
         result = await auth_fn(
             request,
             background_tasks,
             user_email,
-            id_token,
             authorization,
         )
         return result
@@ -64,14 +53,12 @@ def auth_headers_injector(
         request: Request,
         background_tasks: BackgroundTasks,
         user_email: UserEmail = None,
-        id_token: IDTokenHeader = None,
         authorization: AccessTokenHeader = None,
     ):
         result = auth_fn(
             request,
             background_tasks,
             user_email,
-            id_token,
             authorization,
         )
         return result
