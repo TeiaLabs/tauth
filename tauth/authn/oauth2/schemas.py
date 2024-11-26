@@ -17,18 +17,17 @@ class OAuth2Settings(BaseModel):
         iss = authprovider.get_external_id("issuer")
         if not iss:
             raise MissingRequiredClaimError("iss")
-        iss = iss.rstrip("/")
 
         aud = authprovider.get_external_id("audience")
         if not aud:
             raise MissingRequiredClaimError("aud")
 
         if authprovider.type == "auth0":
-            userinfo_url = f"{iss}/userinfo"
-            jwks_url = f"{iss}/.well-known/jwks.json"
+            userinfo_url = f"{iss.rstrip("/")}/userinfo"
+            jwks_url = f"{iss.rstrip("/")}/.well-known/jwks.json"
         elif authprovider.type == "okta":
-            userinfo_url = f"{iss}/oauth2/v1/userinfo"
-            jwks_url = f"{iss}/oauth2/v1/keys"
+            userinfo_url = f"{iss.rstrip("/")}/oauth2/v1/userinfo"
+            jwks_url = f"{iss.rstrip("/")}/oauth2/v1/keys"
         else:
             raise ValueError(f"Unknown OAuth2 provider type: {type!r}.")
 
