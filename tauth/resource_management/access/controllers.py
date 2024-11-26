@@ -32,7 +32,9 @@ def read_many_access(
     return map(lambda x: ResourceAccessDAO(**x), cursor)
 
 
-def create_one(body: ResourceAccessIn, infostar: Infostar):
+def create_one(
+    body: ResourceAccessIn, infostar: Infostar
+) -> tuple[GeneratedFields, ResourceDAO]:
     entity = EntityDAO.from_handle(
         body.entity_ref.handle, body.entity_ref.owner_handle
     )
@@ -64,4 +66,4 @@ def create_one(body: ResourceAccessIn, infostar: Infostar):
             detail=m,
         )
 
-    return GeneratedFields(**resource_access.bson())
+    return GeneratedFields(**resource_access.bson()), resource
