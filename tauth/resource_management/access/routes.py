@@ -7,8 +7,10 @@ from loguru import logger
 from redbaby.pyobjectid import PyObjectId
 
 from tauth.authz.permissions.controllers import upsert_permission
+from tauth.authz.permissions.schemas import PermissionIn
 from tauth.dependencies.authentication import authenticate
 from tauth.entities.routes import add_entity_permission
+from tauth.entities.schemas import EntityRefIn
 from tauth.schemas.gen_fields import GeneratedFields
 from tauth.settings import Settings
 from tauth.utils import reading
@@ -30,7 +32,8 @@ async def create_one(
 ) -> GeneratedFields:
     logger.debug(f"Creating Resource Access for: {body.entity_ref}")
 
-    return controllers.create_one(body, infostar)
+    generated_fields, _ = controllers.create_one(body, infostar)
+    return generated_fields
 
 
 @router.get("/{access_id}", status_code=s.HTTP_200_OK)
@@ -72,7 +75,7 @@ async def grant_access(
     infostar: Infostar = Depends(authenticate),
 ):
     try:
-        created_access = controllers.create_one(
+        created_access, resource = controllers.create_one(
             body=ResourceAccessIn(
                 resource_id=body.resource_id, entity_ref=body.entity_ref
             ),
@@ -92,8 +95,17 @@ async def grant_access(
         body.entity_ref.handle, body.entity_ref.owner_handle
     )
     assert entity
+    permission_obj = PermissionIn(
+        name=body.permission_name,
+        description="Permission created for resource access, by tauth $grant",
+        entity_ref=EntityRefIn(
+            handle=resource.service_ref.handle,
+            owner_handle=resource.service_ref.owner_handle,
+        ),
+        type="resource",
+    )
 
-    p = upsert_permission(permission_in=body.permission, infostar=infostar)
+    p = upsert_permission(permission_in=permission_obj, infostar=infostar)
     logger.debug(f"Upserted permission: {p.id}")
 
     # add permission to entity
@@ -103,6 +115,6 @@ async def grant_access(
 
     return {
         "msg": "Granted Access to entity with permission.",
-        "permission": str(body.permission.name),
+        "permission": str(body.permission_name),
         "entity_id": str(entity.id),
     }

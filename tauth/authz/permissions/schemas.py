@@ -4,12 +4,14 @@ from fastapi.openapi.models import Example
 from pydantic import BaseModel
 
 from ...entities.schemas import EntityRef, EntityRefIn
+from .models import PermissionType
 
 
 class PermissionIn(BaseModel):
     name: str
     description: str
     entity_ref: EntityRefIn
+    type: PermissionType
 
     @staticmethod
     def get_permission_create_examples():
@@ -20,6 +22,7 @@ class PermissionIn(BaseModel):
                     name="resource-read",
                     description="Resource read access.",
                     entity_ref=EntityRefIn(handle="/teialabs"),
+                    type="resource",
                 ),
             ),
             "API admin access": Example(
@@ -28,6 +31,7 @@ class PermissionIn(BaseModel):
                     name="api-admin",
                     description="API administrator access.",
                     entity_ref=EntityRefIn(handle="/teialabs"),
+                    type="generic",
                 ),
             ),
         }
@@ -69,6 +73,7 @@ class PermissionIntermediate(BaseModel):
     name: str
     description: str
     entity_ref: EntityRef
+    type: PermissionType
 
 
 class PermissionContext(BaseModel):

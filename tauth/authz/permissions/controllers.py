@@ -6,12 +6,13 @@ from loguru import logger
 from redbaby.pyobjectid import PyObjectId
 
 from tauth.entities.models import EntityDAO
+from tauth.entities.schemas import EntityRef
 from tauth.schemas.gen_fields import GeneratedFields
 from tauth.schemas.infostar import Infostar
 
 from ...settings import Settings
 from ..roles.models import RoleDAO
-from .models import PermissionDAO
+from .models import PermissionDAO, PermissionType
 from .schemas import PermissionContext, PermissionIn, PermissionIntermediate
 
 
@@ -62,12 +63,22 @@ def read_permissions_from_roles(
 
 def read_many_permissions(
     perms: list[PyObjectId],
+    type: PermissionType | None = None,
+    entity_ref: EntityRef | None = None,
 ) -> set[PermissionContext]:
 
     permission_coll = PermissionDAO.collection(
         alias=Settings.get().REDBABY_ALIAS
     )
-    permissions = permission_coll.find({"_id": {"$in": perms}})
+    filters: dict = {"_id": {"$in": perms}}
+    if type:
+        filters["type"] = type
+    if entity_ref:
+        filters["entity_ref.handle"] = entity_ref.handle
+        if entity_ref.owner_handle:
+            filters["entity_ref.owner_handle"] = entity_ref.owner_handle
+
+    permissions = permission_coll.find(filters)
 
     s = set()
     for p in permissions:

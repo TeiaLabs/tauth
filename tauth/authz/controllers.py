@@ -50,9 +50,6 @@ async def authorize(
     authz_data.context["entity"] = entity.model_dump(mode="json")
     role_ids = map(lambda x: x.id, entity.roles)
     permissions = get_permissions_set(role_ids, entity.permissions)
-    authz_data.context["permissions"] = [
-        permission.model_dump(mode="json") for permission in permissions
-    ]
 
     if authz_data.resources:
         logger.debug(
@@ -69,6 +66,10 @@ async def authorize(
                 status_code=s.HTTP_401_UNAUTHORIZED,
                 detail=dict(msg=message),
             )
+        resource_permissions = read_many_permissions(
+            entity.permissions, "resource", entity_ref=service.to_ref()
+        )
+        permissions = permissions.union(resource_permissions)
         resources = get_context_resources(
             entity=entity,
             service=service,
@@ -79,6 +80,9 @@ async def authorize(
             for resource in resources
         ]
 
+    authz_data.context["permissions"] = [
+        permission.model_dump(mode="json") for permission in permissions
+    ]
     logger.debug("Executing authorization logic.")
     # TODO: determine if we're gonna support arbitrary outputs here (e.g., filters)
     try:
@@ -115,6 +119,6 @@ def get_permissions_set(
         context for contexts in permissions.values() for context in contexts
     )
 
-    s2 = read_many_permissions(entity_permissions)
+    s2 = read_many_permissions(entity_permissions, "generic")
 
     return s.union(s2)
