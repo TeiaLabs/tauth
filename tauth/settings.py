@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import computed_field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .authn import remote as authn_remote
@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     ROOT_API_KEY: str = "MELT_/--default--1"
     AUTHN_ENGINE: Literal["database", "remote"]
     AUTHZ_ENGINE: Literal["opa", "remote"]
+    SALT: str = Field(min_length=16)
 
     @computed_field
     @property
