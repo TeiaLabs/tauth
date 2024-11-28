@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from tauth.authz.roles.schemas import RoleRef
 from tauth.entities.schemas import EntityRef, EntityRefIn
+from tauth.schemas.infostar import Infostar
 
 
 class TauthTokenCreationIn(BaseModel):
@@ -16,3 +19,12 @@ class TauthTokenCreationIntermidiate(TauthTokenCreationIn):
 
 class TauthTokenCreationOut(TauthTokenCreationIntermidiate):
     value: str
+
+
+class TauthTokenDTO(BaseModel):
+    name: str
+    roles: list[RoleRef] = Field(default_factory=list)
+    entity: EntityRef
+    created_by: Infostar
+    created_at: datetime
+    updated_at: datetime

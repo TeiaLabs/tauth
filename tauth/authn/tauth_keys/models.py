@@ -9,6 +9,7 @@ from tauth.authz.roles.schemas import RoleRef
 
 from ...entities.schemas import EntityRef
 from ...utils.teia_behaviors import Authoring
+from .schemas import TauthTokenDTO
 
 
 class TauthTokenDAO(
@@ -45,3 +46,13 @@ class TauthTokenDAO(
             fs.append(self.entity.owner_handle)
 
         return fs
+
+    def to_dto(self):
+        return TauthTokenDTO(
+            name=self.name,
+            roles=self.roles,
+            entity=self.entity,
+            created_by=self.created_by,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )

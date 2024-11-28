@@ -16,7 +16,7 @@ from redbaby.pyobjectid import PyObjectId
 from ...authproviders.models import AuthProviderDAO
 from ...schemas import Creator, Infostar
 from ...utils import reading
-from ..utils import TimedCache
+from ..utils import TimedCache, get_request_ip
 from .schemas import OAuth2Settings
 from .utils import (
     get_signing_key,
@@ -48,7 +48,9 @@ class RequestAuthenticator:
 
         raise HTTPException(
             status_code=s.HTTP_401_UNAUTHORIZED,
-            detail={"msg": "No valid OAuth2 provider found. Got issuer: {issuer!r}."},
+            detail={
+                "msg": "No valid OAuth2 provider found. Got issuer: {issuer!r}."
+            },
         )
 
     @staticmethod
@@ -102,7 +104,9 @@ class RequestAuthenticator:
         if kid is None:
             raise InvalidTokenError("Missing 'kid' header.")
 
-        signing_key = get_signing_key(kid, oauth2_settings.jwks_url, authprovider.type)
+        signing_key = get_signing_key(
+            kid, oauth2_settings.jwks_url, authprovider.type
+        )
         if signing_key is None:
             raise InvalidSignatureError("No signing key found.")
 
@@ -145,20 +149,7 @@ class RequestAuthenticator:
         request: Request, user_data: dict, authprovider: AuthProviderDAO
     ) -> Infostar:
         logger.debug("Assembling Infostar.")
-        if request.client is not None:
-            ip = request.client.host
-        elif request.headers.get("x-tauth-ip"):
-            ip = request.headers["x-tauth-ip"]
-        elif request.headers.get("x-forwarded-for"):
-            ip = request.headers["x-forwarded-for"]
-        else:
-            raise HTTPException(
-                500,
-                detail=(
-                    "Client's IP was not found in: request.client.host, "
-                    "X-Tauth-IP, X-Forwarded-For."
-                ),
-            )
+        ip = get_request_ip(request)
 
         infostar = Infostar(
             request_id=PyObjectId(),
@@ -203,9 +194,13 @@ class RequestAuthenticator:
                 header = get_token_headers(token_value)
                 unverified_claims = get_token_unverified_claims(token_value)
 
-                idp_type = cls.get_oauth2_idp(issuer=unverified_claims.get("iss"))
+                idp_type = cls.get_oauth2_idp(
+                    issuer=unverified_claims.get("iss")
+                )
                 authprovider = cls.get_authprovider(token_value, idp_type)
-                oauth2_settings = OAuth2Settings.from_authprovider(authprovider)
+                oauth2_settings = OAuth2Settings.from_authprovider(
+                    authprovider
+                )
 
                 access_claims = cls.validate_access_token(
                     token_value=token_value,
@@ -236,7 +231,11 @@ class RequestAuthenticator:
             user_email = user_data["user_email"]
             auth_provider_org_ref = authprovider.organization_ref.model_dump()
 
-            cls.CACHE[token_value] = (infostar, user_email, auth_provider_org_ref)
+            cls.CACHE[token_value] = (
+                infostar,
+                user_email,
+                auth_provider_org_ref,
+            )
 
         request.state.infostar = infostar
         logger.debug("Assembling Creator based on Infostar.")
