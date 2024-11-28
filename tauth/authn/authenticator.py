@@ -12,6 +12,7 @@ from tauth.utils.headers import auth_headers_injector
 from ..authn.melt_key import authentication as melt_key
 from ..authn.oauth2 import authentication as oauth2
 from ..authn.remote import engine as remote
+from .tauth_keys import authentication as tauth_key
 
 
 def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
@@ -41,7 +42,9 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
         if token_type.lower() != "bearer":
             raise HTTPException(
                 s.HTTP_401_UNAUTHORIZED,
-                detail={"msg": "Invalid authorization scheme; expected 'bearer'."},
+                detail={
+                    "msg": "Invalid authorization scheme; expected 'bearer'."
+                },
             )
 
         if Settings.get().AUTHN_ENGINE == "remote":
@@ -60,6 +63,12 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
                 user_email=user_email,
                 api_key_header=token_value,
                 background_tasks=background_tasks,
+            )
+            return
+        if token_value.startswith("TAUTH_"):
+            logger.debug("Authenticating with a TAUTH API key.")
+            tauth_key.RequestAuthenticator.validate(
+                request=request, api_key_header=token_value
             )
             return
 

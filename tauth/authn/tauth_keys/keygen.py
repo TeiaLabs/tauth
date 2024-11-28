@@ -16,13 +16,11 @@ def hash_value(value: str) -> str:
     return sha256(f"{value}{salt}".encode()).hexdigest()
 
 
-def generate_key_value(
-    token_id: PyObjectId,
-):
+def generate_key_value(token_id: PyObjectId, secret: str):
     """
     The tauth key: TAUTH_<db_id>_<secret>
     """
-    return f"TAUTH_{str(token_id)}_{secrets.token_hex(32)}"
+    return f"TAUTH_{str(token_id)}_{secret}"
 
 
 def create(
@@ -31,7 +29,9 @@ def create(
 
     id = PyObjectId()
 
-    secret = generate_key_value(id)
+    secret = secrets.token_hex(32)
+
+    key = generate_key_value(id, secret)
 
     token_dao = TauthTokenDAO(
         _id=id,
@@ -42,6 +42,6 @@ def create(
         created_by=infostar,
     )
 
-    token_out_dto = TauthTokenCreationOut(value=secret, **dto.model_dump())
+    token_out_dto = TauthTokenCreationOut(value=key, **dto.model_dump())
 
     return token_dao, token_out_dto
