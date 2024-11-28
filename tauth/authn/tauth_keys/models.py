@@ -1,6 +1,6 @@
 from pydantic import Field
 from pymongo import IndexModel
-from redbaby.behaviors.hashids import HashIdMixin
+from redbaby.behaviors.objectids import ObjectIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.behaviors.timestamping import Timestamping
 from redbaby.document import Document
@@ -13,7 +13,7 @@ from .schemas import TauthTokenDTO
 
 
 class TauthTokenDAO(
-    Document, Authoring, HashIdMixin, ReadingMixin, Timestamping
+    Document, Authoring, ObjectIdMixin, ReadingMixin, Timestamping
 ):
     name: str
     value_hash: str
@@ -39,13 +39,6 @@ class TauthTokenDAO(
             ),
         ]
         return idxs
-
-    def hashable_fields(self):
-        fs = [self.name, self.entity.handle]
-        if self.entity.owner_handle:
-            fs.append(self.entity.owner_handle)
-
-        return fs
 
     def to_dto(self):
         return TauthTokenDTO(
