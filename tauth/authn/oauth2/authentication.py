@@ -23,6 +23,7 @@ from ...authproviders.models import AuthProviderDAO
 from ...schemas import Creator, Infostar
 from ...settings import Settings
 from ...utils import reading
+from ..utils import get_request_ip
 from .models import UserInfoDAO
 from .schemas import OAuth2Settings
 from .utils import (
@@ -57,7 +58,9 @@ class UserInfo:
         hashed_token = sha256(access_token.encode()).hexdigest()
         data["hashed_token"] = hashed_token
         if exp is None:
-            exp = datetime.now(UTC).timestamp() + UserInfo.CACHE_DEFAULT_TIMEOUT
+            exp = (
+                datetime.now(UTC).timestamp() + UserInfo.CACHE_DEFAULT_TIMEOUT
+            )
 
         # Delete expired caches
         coll.delete_many({"exp": {"$lt": datetime.now(UTC).timestamp()}})
@@ -141,7 +144,9 @@ class RequestAuthenticator:
 
         raise HTTPException(
             status_code=s.HTTP_401_UNAUTHORIZED,
-            detail={"msg": f"No valid OAuth2 provider found. Got issuer: {issuer!r}."},
+            detail={
+                "msg": f"No valid OAuth2 provider found. Got issuer: {issuer!r}."
+            },
         )
 
     @staticmethod
@@ -195,7 +200,9 @@ class RequestAuthenticator:
         if kid is None:
             raise InvalidTokenError("Missing 'kid' header.")
 
-        signing_key = get_signing_key(kid, oauth2_settings.jwks_url, authprovider.type)
+        signing_key = get_signing_key(
+            kid, oauth2_settings.jwks_url, authprovider.type
+        )
         if signing_key is None:
             raise InvalidSignatureError("No signing key found.")
 
@@ -238,20 +245,7 @@ class RequestAuthenticator:
         request: Request, user_data: dict, authprovider: AuthProviderDAO
     ) -> Infostar:
         logger.debug("Assembling Infostar.")
-        if request.client is not None:
-            ip = request.client.host
-        elif request.headers.get("x-tauth-ip"):
-            ip = request.headers["x-tauth-ip"]
-        elif request.headers.get("x-forwarded-for"):
-            ip = request.headers["x-forwarded-for"]
-        else:
-            raise HTTPException(
-                500,
-                detail=(
-                    "Client's IP was not found in: request.client.host, "
-                    "X-Tauth-IP, X-Forwarded-For."
-                ),
-            )
+        ip = get_request_ip(request)
 
         infostar = Infostar(
             request_id=PyObjectId(),

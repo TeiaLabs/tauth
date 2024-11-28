@@ -1,6 +1,8 @@
 import time
 from typing import Any
 
+from fastapi import HTTPException, Request
+
 
 class TimedCache[K, V](dict):
     def __init__(self, max_size: int, ttl: int):
@@ -32,7 +34,9 @@ class TimedCache[K, V](dict):
     def __setitem__(self, key: K, value: V):
         if self._current_size > self._max_size:
             if key not in self._data.keys():
-                oldest_key = sorted(self._data_times.items(), key=lambda obj: obj[1])
+                oldest_key = sorted(
+                    self._data_times.items(), key=lambda obj: obj[1]
+                )
                 self._data.pop(oldest_key[0])
                 self._data_times.pop(oldest_key[0])
             else:
@@ -69,3 +73,21 @@ class SizedCache[K, V](TimedCache[K, V]):
 
     def __getitem__(self, key: K) -> V:
         return self._data[key]
+
+
+def get_request_ip(request: Request) -> str:
+    if request.client is not None:
+        ip = request.client.host
+    elif request.headers.get("x-tauth-ip"):
+        ip = request.headers["x-tauth-ip"]
+    elif request.headers.get("x-forwarded-for"):
+        ip = request.headers["x-forwarded-for"]
+    else:
+        raise HTTPException(
+            500,
+            detail=(
+                "Client's IP was not found in: request.client.host, "
+                "X-Tauth-IP, X-Forwarded-For."
+            ),
+        )
+    return ip

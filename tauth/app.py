@@ -15,6 +15,7 @@ from .legacy import client, tokens
 from .resource_management.access import router as resource_access_router
 from .resource_management.resources import router as resources_router
 from .settings import Settings
+from .tauth_keys.routes import router as token_router
 
 
 def create_app() -> FastAPI:
@@ -51,4 +52,5 @@ def get_router() -> APIRouter:
     base_router.include_router(client.router)
     base_router.include_router(tokens.router)
     base_router.include_router(resource_access_router)
+    base_router.include_router(token_router)
     return base_router
