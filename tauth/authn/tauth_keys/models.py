@@ -42,6 +42,7 @@ class TauthTokenDAO(
 
     def to_dto(self):
         return TauthTokenDTO(
+            id=self.id,
             name=self.name,
             roles=self.roles,
             entity=self.entity,

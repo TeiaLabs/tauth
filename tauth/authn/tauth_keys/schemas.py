@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, Field
+from redbaby.pyobjectid import PyObjectId
 
 from tauth.authz.roles.schemas import RoleRef
 from tauth.entities.schemas import EntityRef, EntityRefIn
@@ -22,6 +23,7 @@ class TauthTokenCreationOut(TauthTokenCreationIntermidiate):
 
 
 class TauthTokenDTO(BaseModel):
+    id: PyObjectId
     name: str
     roles: list[RoleRef] = Field(default_factory=list)
     entity: EntityRef

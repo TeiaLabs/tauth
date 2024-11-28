@@ -53,7 +53,7 @@ class RequestAuthenticator:
         collection = TauthTokenDAO.collection(
             alias=Settings.get().REDBABY_ALIAS
         )
-        r = collection.find_one({"_id": id})
+        r = collection.find_one({"_id": PyObjectId(id), "deleted": False})
         if not r:
             raise HTTPException(
                 status_code=404,
@@ -67,7 +67,7 @@ class RequestAuthenticator:
         if hash_value(secret) == token.value_hash:
             return
         raise HTTPException(
-            status_code=403,
+            status_code=401,
             detail="Invalid API Key",
         )
 
@@ -75,7 +75,7 @@ class RequestAuthenticator:
     def create_infostar_from_entity(
         cls, entity: EntityDAO, token: TauthTokenDAO, request: Request
     ):
-        owner_ref = entity.owner_ref.handle if entity.owner_ref else "/"
+        owner_ref = entity.owner_ref.handle if entity.owner_ref else ""
         ip = get_request_ip(request)
         infostar = Infostar(
             request_id=PyObjectId(),
