@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi import Path as PathParam
-from fastapi import Query, Request
 from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
@@ -17,8 +16,8 @@ from ..schemas import Infostar
 from ..schemas.gen_fields import GeneratedFields
 from ..settings import Settings
 from ..utils import creation, reading
-from .models import EntityDAO
-from .schemas import EntityIn, EntityIntermediate
+from .models import EntityDAO, EntityIntermediate
+from .schemas import EntityIn
 
 service_name = Path(__file__).parent.name
 router = APIRouter(prefix=f"/{service_name}", tags=[service_name + " 👥💻🏢"])
@@ -45,7 +44,9 @@ async def create_one(
     else:
         owner_ref = None
     schema_in = EntityIntermediate(
-        owner_ref=owner_ref, **body.model_dump(exclude={"owner_ref"})
+        owner_ref=owner_ref,
+        roles=list(map(lambda x: RoleRef(id=PyObjectId(x)), body.roles)),
+        **body.model_dump(exclude={"owner_ref", "roles"}),
     )
     entity = creation.create_one(schema_in, EntityDAO, infostar)
     return GeneratedFields(**entity.model_dump(by_alias=True))

@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from typing import Literal, Optional
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
 from redbaby.behaviors.reading import ReadingMixin
@@ -120,3 +120,12 @@ class EntityRelationshipsDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     def hashable_fields(self) -> list[str]:
         fields = [self.type, self.origin.handle, self.target.handle]
         return fields
+
+
+class EntityIntermediate(BaseModel):
+    external_ids: list[Attribute] = Field(default_factory=list)
+    extra: list[Attribute] = Field(default_factory=list)
+    handle: str = Field(...)
+    owner_ref: EntityRef | None = Field(None)
+    roles: list[RoleRef] = Field(default_factory=list)
+    type: Literal["user", "service", "organization"]
