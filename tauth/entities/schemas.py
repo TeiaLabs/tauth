@@ -63,12 +63,3 @@ class EntityIn(BaseModel):
             ),
         }
         return examples
-
-
-class EntityIntermediate(BaseModel):
-    external_ids: list[Attribute] = Field(default_factory=list)
-    extra: list[Attribute] = Field(default_factory=list)
-    handle: str = Field(...)
-    owner_ref: EntityRef | None = Field(None)
-    roles: list[str] = Field(default_factory=list)
-    type: Literal["user", "service", "organization"]
