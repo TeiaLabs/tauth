@@ -41,6 +41,8 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
         background_tasks: BackgroundTasks,
         user_email: str | None = None,
         authorization: HTTPAuthorizationCredentials | None = None,
+        impersonate_entity_handle: str | None = None,
+        impersonate_entity_owner: str | None = None,
     ) -> AuthorizationResponse:
         if not authz_data:
             raise HTTPException(
@@ -57,14 +59,17 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
                 context=authz_data.context,
                 resources=authz_data.resources,
                 access_token=authorization.credentials,
-                id_token=id_token,
                 user_email=user_email,
+                impersonate_handle=impersonate_entity_handle,
+                impersonate_entity_owner=impersonate_entity_owner,
             )
         else:
             result = await authz_controllers.authorize(request, authz_data)
 
         if not result.authorized:
-            raise HTTPException(status_code=s.HTTP_403_FORBIDDEN, detail=result.details)
+            raise HTTPException(
+                status_code=s.HTTP_403_FORBIDDEN, detail=result.details
+            )
         request.state.authz_result = result
         return result
 
