@@ -1,4 +1,5 @@
 from fastapi import HTTPException, Request
+from loguru import logger
 from redbaby.pyobjectid import PyObjectId
 
 from ...entities.models import EntityDAO
@@ -20,8 +21,10 @@ class RequestAuthenticator:
         cls,
         request: Request,
         api_key_header: str,
+        impersonate_handle: str | None,
+        impersonate_owner_handle: str | None,
     ):
-        if api_key_header in cls.CACHE:
+        if api_key_header in cls.CACHE and impersonate_handle is None:
             creator, infostar = cls.CACHE[api_key_header]
 
         else:
@@ -30,15 +33,28 @@ class RequestAuthenticator:
 
             cls.validate_token(token_obj, secret)
 
-            entity = EntityDAO.from_handle(
-                handle=token_obj.entity.handle,
-                owner_handle=token_obj.entity.owner_handle,
-            )
+            if impersonate_handle is not None and cls.can_impersonate(
+                token_obj
+            ):
+                logger.info(
+                    f"Impersonating {impersonate_handle} on behalf of {token_obj.entity.handle}"
+                )
+                entity = EntityDAO.from_handle(
+                    handle=impersonate_handle,
+                    owner_handle=impersonate_owner_handle,
+                )
+            else:
+                entity = EntityDAO.from_handle(
+                    handle=token_obj.entity.handle,
+                    owner_handle=token_obj.entity.owner_handle,
+                )
+
             if not entity:
                 raise HTTPException(
                     status_code=404,
                     detail="Entity from key not found",
                 )
+
             infostar = cls.create_infostar_from_entity(
                 entity, token_obj, request
             )
@@ -47,6 +63,10 @@ class RequestAuthenticator:
 
         request.state.infostar = infostar
         request.state.creator = creator
+
+    @classmethod
+    def can_impersonate(cls, token: TauthTokenDAO) -> bool:
+        return True
 
     @staticmethod
     def find_one_token(id: str):

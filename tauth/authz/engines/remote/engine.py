@@ -42,6 +42,10 @@ class RemoteEngine(AuthorizationInterface):
         headers = {
             "Authorization": self._get_authorization_header(access_token),
             "X-User-Email": user_email,
+            "X-Impersonate-Entity-Handle": kwargs.get("impersonate_handle"),
+            "X-Impersonate-Entity-Owner": kwargs.get(
+                "impersonate_owner_handle"
+            ),
         }
         headers = {k: v for k, v in headers.items() if v is not None}
         if context is None:

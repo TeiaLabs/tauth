@@ -22,6 +22,8 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
         background_tasks: BackgroundTasks,
         user_email: str | None = None,
         authorization: HTTPAuthorizationCredentials | None = None,
+        impersonate_entity_handle: str | None = None,
+        impersonate_entity_owner: str | None = None,
     ) -> None:
         req_path: str = request.scope["path"]
         if request.method == "GET" and req_path in ignore_paths:
@@ -53,6 +55,8 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
                 request=request,
                 access_token=token_value,
                 user_email=user_email,
+                impersonate_handle=impersonate_entity_handle,
+                impersonate_owner_handle=impersonate_entity_owner,
             )
             return
 
@@ -68,7 +72,10 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
         if token_value.startswith("TAUTH_"):
             logger.debug("Authenticating with a TAUTH API key.")
             tauth_key.RequestAuthenticator.validate(
-                request=request, api_key_header=token_value
+                request=request,
+                api_key_header=token_value,
+                impersonate_handle=impersonate_entity_handle,
+                impersonate_owner_handle=impersonate_entity_owner,
             )
             return
 
