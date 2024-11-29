@@ -4,8 +4,7 @@ from redbaby.behaviors.objectids import ObjectIdMixin
 from redbaby.behaviors.reading import ReadingMixin
 from redbaby.behaviors.timestamping import Timestamping
 from redbaby.document import Document
-
-from tauth.authz.roles.schemas import RoleRef
+from redbaby.pyobjectid import PyObjectId
 
 from ...entities.schemas import EntityRef
 from ...utils.teia_behaviors import Authoring
@@ -17,7 +16,7 @@ class TauthTokenDAO(
 ):
     name: str
     value_hash: str
-    roles: list[RoleRef] = Field(default_factory=list)
+    roles: list[PyObjectId] = Field(default_factory=list)
     deleted: bool = Field(default=False)
     entity: EntityRef
 
