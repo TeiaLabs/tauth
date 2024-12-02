@@ -132,7 +132,7 @@ class RequestAuthenticator:
 
         raise HTTPException(
             status_code=s.HTTP_401_UNAUTHORIZED,
-            detail={"msg": "No valid OAuth2 provider found. Got issuer: {issuer!r}."},
+            detail={"msg": f"No valid OAuth2 provider found. Got issuer: {issuer!r}."},
         )
 
     @staticmethod
