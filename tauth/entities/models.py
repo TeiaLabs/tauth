@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from typing import Literal, Optional
 
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
@@ -57,6 +58,21 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
         out = cls.collection(alias="tauth").find_one(filters)
         if out:
             return EntityDAO(**out)
+
+    @classmethod
+    def from_handle_assert(
+        cls,
+        handle: str,
+        owner_handle: str | None,
+    ) -> "EntityDAO":
+        entity = cls.from_handle(handle, owner_handle)
+        if entity is None:
+
+            raise HTTPException(
+                status_code=404,
+                detail=f"Entity with handle {handle} not found",
+            )
+        return entity
 
     @classmethod
     def from_handle_to_ref(

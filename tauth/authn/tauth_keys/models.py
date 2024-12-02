@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from pydantic import Field
 from pymongo import IndexModel
 from redbaby.behaviors.objectids import ObjectIdMixin
@@ -5,6 +6,8 @@ from redbaby.behaviors.reading import ReadingMixin
 from redbaby.behaviors.timestamping import Timestamping
 from redbaby.document import Document
 from redbaby.pyobjectid import PyObjectId
+
+from tauth.settings import Settings
 
 from ...entities.schemas import EntityRef
 from ...utils.teia_behaviors import Authoring
@@ -49,3 +52,15 @@ class TauthTokenDAO(
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
+
+    @classmethod
+    def find_one_token(cls, id: str):
+        collection = cls.collection(alias=Settings.get().REDBABY_ALIAS)
+        r = collection.find_one({"_id": PyObjectId(id), "deleted": False})
+        if not r:
+            raise HTTPException(
+                status_code=404,
+                detail="API Key not found",
+            )
+
+        return TauthTokenDAO(**r)

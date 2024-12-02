@@ -2,9 +2,12 @@ from fastapi import HTTPException, Request
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.authz.policies.schemas import AuthorizationDataIn
+
+from ...authz.controllers import authorize
+from ...authz.utils import get_permission_set_from_roles
 from ...entities.models import EntityDAO
 from ...schemas import Creator, Infostar
-from ...settings import Settings
 from ..utils import SizedCache, get_request_ip
 from .keygen import hash_value
 from .models import TauthTokenDAO
@@ -17,7 +20,7 @@ class RequestAuthenticator:
     CACHE: SizedCache[str, tuple[Creator, Infostar]] = SizedCache(max_size=512)
 
     @classmethod
-    def validate(
+    async def validate(
         cls,
         request: Request,
         api_key_header: str,
@@ -29,30 +32,22 @@ class RequestAuthenticator:
 
         else:
             db_id, secret = parse_key(api_key_header)
-            token_obj = cls.find_one_token(db_id)
+            token_obj = TauthTokenDAO.find_one_token(db_id)
 
             cls.validate_token(token_obj, secret)
 
-            if impersonate_handle is not None and cls.can_impersonate(
-                token_obj
-            ):
+            entity = EntityDAO.from_handle_assert(
+                handle=token_obj.entity.handle,
+                owner_handle=token_obj.entity.owner_handle,
+            )
+            if impersonate_handle is not None:
+                await cls.can_impersonate(request, entity, token_obj)
                 logger.info(
                     f"Impersonating {impersonate_handle} on behalf of {token_obj.entity.handle}"
                 )
-                entity = EntityDAO.from_handle(
+                entity = EntityDAO.from_handle_assert(
                     handle=impersonate_handle,
                     owner_handle=impersonate_owner_handle,
-                )
-            else:
-                entity = EntityDAO.from_handle(
-                    handle=token_obj.entity.handle,
-                    owner_handle=token_obj.entity.owner_handle,
-                )
-
-            if not entity:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Entity from key not found",
                 )
 
             infostar = cls.create_infostar_from_entity(
@@ -65,22 +60,23 @@ class RequestAuthenticator:
         request.state.creator = creator
 
     @classmethod
-    def can_impersonate(cls, token: TauthTokenDAO) -> bool:
-        return True
-
-    @staticmethod
-    def find_one_token(id: str):
-        collection = TauthTokenDAO.collection(
-            alias=Settings.get().REDBABY_ALIAS
+    async def can_impersonate(
+        cls, request: Request, entity: EntityDAO, token: TauthTokenDAO
+    ):
+        token_permissions = get_permission_set_from_roles(token.roles)
+        res = await authorize(
+            request,
+            entity,
+            authz_data=AuthorizationDataIn(
+                context=dict(), policy_name="impersonate", rule="allow"
+            ),
+            allowed_permissions=token_permissions,
         )
-        r = collection.find_one({"_id": PyObjectId(id), "deleted": False})
-        if not r:
+        if res.authorized is False:
             raise HTTPException(
-                status_code=404,
-                detail="API Key not found",
+                status_code=401,
+                detail="You are not authorized to impersonate this entity",
             )
-
-        return TauthTokenDAO(**r)
 
     @staticmethod
     def validate_token(token: TauthTokenDAO, secret: str):
