@@ -17,7 +17,7 @@ from .tauth_keys import authentication as tauth_key
 
 def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
     @auth_headers_injector
-    def _authenticate(
+    async def _authenticate(
         request: Request,
         background_tasks: BackgroundTasks,
         user_email: str | None = None,
@@ -71,7 +71,7 @@ def authn(ignore_paths: Iterable[str] = ("/", "/api", "/api/")):
             return
         if token_value.startswith("TAUTH_"):
             logger.debug("Authenticating with a TAUTH API key.")
-            tauth_key.RequestAuthenticator.validate(
+            await tauth_key.RequestAuthenticator.validate(
                 request=request,
                 api_key_header=token_value,
                 impersonate_handle=impersonate_entity_handle,

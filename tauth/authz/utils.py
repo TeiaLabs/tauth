@@ -1,4 +1,16 @@
+from collections.abc import Iterable
+
 from fastapi import Request
+from redbaby.pyobjectid import PyObjectId
+
+from tauth.authn.tauth_keys.models import TauthTokenDAO
+from tauth.authz.permissions.controllers import (
+    read_many_permissions,
+    read_permissions_from_roles,
+)
+from tauth.authz.permissions.schemas import PermissionContext
+
+from ..authn.tauth_keys.utils import parse_key
 
 
 async def get_request_context(request: Request) -> dict:
@@ -13,3 +25,39 @@ async def get_request_context(request: Request) -> dict:
         context["body"] = await request.json()
 
     return context
+
+
+def get_permissions_set(
+    roles: Iterable[PyObjectId], entity_permissions: list[PyObjectId]
+) -> set[PermissionContext]:
+    s = get_permission_set_from_roles(roles)
+    s2 = read_many_permissions(entity_permissions)
+
+    return s.union(s2)
+
+
+def get_permission_set_from_roles(
+    roles: Iterable[PyObjectId],
+) -> set[PermissionContext]:
+    permissions = read_permissions_from_roles(roles)
+    s = set(
+        context for contexts in permissions.values() for context in contexts
+    )
+    return s
+
+
+def get_allowed_permissions(request: Request) -> set[PermissionContext] | None:
+    if request.state.infostar.authprovider_type == "tauth-key":
+        token = request.headers.get("Authorization")
+        assert token
+        token_obj = resolve_token(token)
+        return get_permission_set_from_roles(token_obj.roles)
+    return None
+
+
+def resolve_token(token: str):
+
+    token = token.split()[-1]
+    id, _ = parse_key(token)
+
+    return TauthTokenDAO.find_one_token(id)
