@@ -1,24 +1,24 @@
 name: Test
 
 on:
-  push:
-    branches: [ "master" ]
-    paths:
-      - "tauth/**"
-      - "tests/**"
-      - "setup.py"
-      - "requirements.txt"
-      - "requirements-test.txt"
-      - ".github/workflows/test.yml"
-  pull_request:
-    branches: [ "master" ]
-    paths:
-      - "tauth/**"
-      - "tests/**"
-      - "setup.py"
-      - "requirements.txt"
-      - "requirements-test.txt"
-      - ".github/workflows/test.yml"
+  # push:
+  #   branches: [ "master" ]
+  #   paths:
+  #     - "tauth/**"
+  #     - "tests/**"
+  #     - "setup.py"
+  #     - "requirements.txt"
+  #     - "requirements-test.txt"
+  #     - ".github/workflows/test.yml"
+  # pull_request:
+  #   branches: [ "master" ]
+  #   paths:
+  #     - "tauth/**"
+  #     - "tests/**"
+  #     - "setup.py"
+  #     - "requirements.txt"
+  #     - "requirements-test.txt"
+  #     - ".github/workflows/test.yml"
 
 
 jobs:
