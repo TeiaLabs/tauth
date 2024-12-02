@@ -40,13 +40,14 @@ jobs:
           cache: 'pip'
           cache-dependency-path: |
             requirements.txt
+            requirements-test.txt
       - uses: supercharge/mongodb-github-action@1.10.0
         with:
           mongodb-version: 'latest'
       - run: |
           python -m pip install --upgrade pip
       - run: |
-          pip install .
+          pip install .[test]
       - name: Run tests.
         working-directory: .
         run: pytest ./tests/ --tb=line --show-capture=no
