@@ -9,7 +9,9 @@ from ...schemas import Creator, Infostar
 
 
 class RequestAuthenticator:
-    CLIENT = httpx.Client(base_url=Settings.get().AUTHN_ENGINE_SETTINGS.API_URL)
+    CLIENT = httpx.Client(
+        base_url=Settings.get().AUTHN_ENGINE_SETTINGS.API_URL
+    )
 
     @classmethod
     def validate(
@@ -17,16 +19,22 @@ class RequestAuthenticator:
         request: Request,
         access_token: str,
         user_email: str | None,
+        impersonate_handle: str | None,
+        impersonate_owner_handle: str | None,
     ):
         headers = {
             "Authorization": f"Bearer {access_token}",
             "X-User-Email": user_email,
+            "X-Impersonate-Entity-Handle": impersonate_handle,
+            "X-Impersonate-Entity-Owner": impersonate_owner_handle,
         }
         headers = {k: v for k, v in headers.items() if v is not None}
         response = cls.CLIENT.post("/authn", headers=headers)
         content = response.json()
         if response.status_code != s.HTTP_200_OK:
-            raise HTTPException(status_code=s.HTTP_401_UNAUTHORIZED, detail=content)
+            raise HTTPException(
+                status_code=s.HTTP_401_UNAUTHORIZED, detail=content
+            )
 
         infostar = Infostar(**content)
         request.state.infostar = infostar

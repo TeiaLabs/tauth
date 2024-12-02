@@ -12,7 +12,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 from tauth.authz import controllers as authz_controllers
 from tauth.authz.engines.remote.engine import RemoteEngine
 from tauth.authz.policies.schemas import AuthorizationDataIn
-from tauth.authz.utils import get_request_context
+from tauth.authz.utils import get_allowed_permissions, get_request_context
+from tauth.entities.models import EntityDAO
 from tauth.schemas.infostar import Infostar
 from tauth.settings import Settings
 
@@ -34,13 +35,17 @@ def init_router(router: APIRouter, authz_data: AuthorizationDataIn):
     router.dependencies.append(Depends(authz(authz_data), use_cache=True))
 
 
-def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
+def authz(
+    authz_data: AuthorizationDataIn, infostar: Infostar = Depends(authn())
+):
     @auth_headers_injector
     async def _authorize(
         request: Request,
         background_tasks: BackgroundTasks,
         user_email: str | None = None,
         authorization: HTTPAuthorizationCredentials | None = None,
+        impersonate_entity_handle: str | None = None,
+        impersonate_entity_owner: str | None = None,
     ) -> AuthorizationResponse:
         if not authz_data:
             raise HTTPException(
@@ -58,9 +63,29 @@ def authz(authz_data: AuthorizationDataIn, _: Infostar = Depends(authn())):
                 resources=authz_data.resources,
                 access_token=authorization.credentials,
                 user_email=user_email,
+                impersonate_handle=impersonate_entity_handle,
+                impersonate_entity_owner=impersonate_entity_owner,
             )
         else:
-            result = await authz_controllers.authorize(request, authz_data)
+            entity = EntityDAO.from_handle(
+                handle=infostar.user_handle,
+                owner_handle=infostar.user_owner_handle,
+            )
+            if not entity:
+                message = (
+                    f"Entity not found for handle: {infostar.user_handle}."
+                )
+                raise HTTPException(
+                    status_code=s.HTTP_401_UNAUTHORIZED,
+                    detail=dict(msg=message),
+                )
+
+            result = await authz_controllers.authorize(
+                request,
+                entity,
+                authz_data,
+                allowed_permissions=get_allowed_permissions(request),
+            )
 
         if not result.authorized:
             raise HTTPException(

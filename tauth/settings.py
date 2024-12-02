@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import computed_field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .authn import remote as authn_remote
@@ -25,6 +25,19 @@ class Settings(BaseSettings):
     ROOT_API_KEY: str = "MELT_/--default--1"
     AUTHN_ENGINE: Literal["database", "remote"]
     AUTHZ_ENGINE: Literal["opa", "remote"]
+    SALT_SEED: str | None = Field(default=None, min_length=16)
+
+    @property
+    def SALT(self):
+        if self.AUTHN_ENGINE == "database":
+            if not self.SALT_SEED:
+                raise ValueError(
+                    "SALT_SEED is required for database authn engine"
+                )
+            else:
+                return self.SALT_SEED
+        elif self.AUTHN_ENGINE == "remote":
+            raise ValueError("SALT_SEED is required for remote authn engine")
 
     @computed_field
     @property

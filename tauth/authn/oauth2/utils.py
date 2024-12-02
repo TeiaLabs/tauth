@@ -9,8 +9,7 @@ from httpx import Client, HTTPError
 from jwt import PyJWKClient, PyJWKSet
 from loguru import logger
 
-from ...entities.models import EntityDAO
-from ...entities.schemas import EntityIntermediate
+from ...entities.models import EntityDAO, EntityIntermediate
 from ...schemas.infostar import Infostar
 from ...utils import creation, reading
 
@@ -19,7 +18,9 @@ class ManyJSONKeySetStore:
     @classmethod
     @ttl_cache(maxsize=32, ttl=60 * 60 * 6)
     def get_jwks(cls, type: str, jwks_url: str) -> PyJWKSet:
-        logger.debug(f"Fetching JWKS for {type!r} OAuth2 provider from {jwks_url!r}.")
+        logger.debug(
+            f"Fetching JWKS for {type!r} OAuth2 provider from {jwks_url!r}."
+        )
         with Client() as client:
             logger.debug(f"Fetching JWKS from {jwks_url}.")
             res = client.get(jwks_url)

@@ -1,7 +1,8 @@
 from collections.abc import Iterator
 from typing import Literal, Optional
 
-from pydantic import Field
+from fastapi import HTTPException
+from pydantic import BaseModel, Field
 from pymongo import IndexModel
 from redbaby.behaviors.hashids import HashIdMixin
 from redbaby.behaviors.reading import ReadingMixin
@@ -57,6 +58,21 @@ class EntityDAO(Document, Authoring, ReadingMixin, HashIdMixin):
         out = cls.collection(alias="tauth").find_one(filters)
         if out:
             return EntityDAO(**out)
+
+    @classmethod
+    def from_handle_assert(
+        cls,
+        handle: str,
+        owner_handle: str | None,
+    ) -> "EntityDAO":
+        entity = cls.from_handle(handle, owner_handle)
+        if entity is None:
+
+            raise HTTPException(
+                status_code=404,
+                detail=f"Entity with handle {handle} not found",
+            )
+        return entity
 
     @classmethod
     def from_handle_to_ref(
@@ -120,3 +136,12 @@ class EntityRelationshipsDAO(Document, Authoring, ReadingMixin, HashIdMixin):
     def hashable_fields(self) -> list[str]:
         fields = [self.type, self.origin.handle, self.target.handle]
         return fields
+
+
+class EntityIntermediate(BaseModel):
+    external_ids: list[Attribute] = Field(default_factory=list)
+    extra: list[Attribute] = Field(default_factory=list)
+    handle: str = Field(...)
+    owner_ref: EntityRef | None = Field(None)
+    roles: list[RoleRef] = Field(default_factory=list)
+    type: Literal["user", "service", "organization"]

@@ -3,7 +3,7 @@ package tauth.melt_key
 import rego.v1
 
 default is_user := false
-
+# REDO THIS POLICY
 is_user if {
 	input.infostar.authprovider_type == "melt-key"
 }
