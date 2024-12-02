@@ -1,4 +1,6 @@
-from typing import Any
+from datetime import datetime
+from hashlib import sha256
+from typing import Any, Self
 
 import httpx
 import jwt as pyjwt
@@ -11,12 +13,13 @@ from jwt import (
     MissingRequiredClaimError,
 )
 from loguru import logger
+from pytz import UTC
+from redbaby.database import DB
 from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
 from ...schemas import Creator, Infostar
 from ...utils import reading
-from ..utils import TimedCache
 from .schemas import OAuth2Settings
 from .utils import (
     get_signing_key,
@@ -26,12 +29,93 @@ from .utils import (
 )
 
 
+class UserInfo:
+    CACHE_DB_NAME = "cache"
+    CACHE_COLLECTION_NAME = "userinfo"
+    CACHE_DEFAULT_TIMEOUT = 60 * 60 * 1  # 1h
+
+    @classmethod
+    def _cache(
+        cls: type[Self],
+        access_token: str,
+        exp: float | None,
+        data: dict[str, Any],
+    ):
+        """
+        Caches the userinfo value.
+
+        :param access_token: Access token.
+        :param data: User info data
+        :param ttl: Cache time to live in seconds
+        """
+
+        db = DB.get(db_name=cls.CACHE_DB_NAME)
+        coll = db[cls.CACHE_COLLECTION_NAME]
+
+        hashed_token = sha256(access_token.encode()).hexdigest()
+        data["hashed_token"] = hashed_token
+        if exp is None:
+            exp = datetime.now(UTC).timestamp() + UserInfo.CACHE_DEFAULT_TIMEOUT
+
+        data["exp"] = exp
+
+        coll.insert_one(data)
+
+    @classmethod
+    def _try_read(cls: type[Self], access_token: str) -> Any | None:
+        """
+        Reads a cache from the database if its ttl was not exceeded.
+
+        If the database record has exceeded its ttl, it will return None.
+
+        :param access_token: Access token.
+        :return: Cache data found. `None` if not found
+        """
+
+        now = datetime.now(UTC).timestamp()
+        hashed_token = sha256(access_token.encode()).hexdigest()
+
+        db = DB.get(db_name=cls.CACHE_DB_NAME)
+        coll = db[cls.CACHE_COLLECTION_NAME]
+        value = coll.find_one(
+            {
+                "hashed_token": hashed_token,
+                "exp": {"$gte": now},
+            }
+        )
+        if value:
+            value.pop("exp")
+            value.pop("hashed_token")
+
+        return value
+
+    @classmethod
+    def get_user_info(
+        cls: type[Self],
+        exp: float | None,
+        access_token: str,
+        oauth2_settings: OAuth2Settings,
+    ):
+        user_info = cls._try_read(access_token=access_token)
+        if not user_info:
+            res = httpx.get(
+                oauth2_settings.userinfo_url,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            res.raise_for_status()
+            user_info = res.json()
+
+            cls._cache(
+                access_token=access_token,
+                exp=exp,
+                data=user_info,
+            )
+
+        return user_info
+
+
 class RequestAuthenticator:
     SUPPORTED_PROVIDERS = ("auth0", "okta")
-    CACHE: TimedCache[str, tuple[Infostar, str, dict]] = TimedCache(
-        max_size=4096,
-        ttl=60 * 60 * 1,  # 1h
-    )
 
     @staticmethod
     def get_oauth2_idp(issuer: str | None) -> str:
@@ -176,67 +260,50 @@ class RequestAuthenticator:
         return infostar
 
     @classmethod
-    def get_user_info_from_provider(
-        cls,
-        access_token: str,
-        oauth2_settings: OAuth2Settings,
-    ) -> dict[str, Any]:
-        res = httpx.get(
-            oauth2_settings.userinfo_url,
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        res.raise_for_status()
-        return res.json()
-
-    @classmethod
     def validate(
         cls,
         request: Request,
         token_value: str,
         background_tasks: BackgroundTasks,
     ):
-        cached_value = cls.CACHE.get(token_value)
-        if cached_value:
-            infostar, user_email, auth_provider_org_ref = cached_value
-        else:
-            try:
-                header = get_token_headers(token_value)
-                unverified_claims = get_token_unverified_claims(token_value)
+        try:
+            header = get_token_headers(token_value)
+            unverified_claims = get_token_unverified_claims(token_value)
 
-                idp_type = cls.get_oauth2_idp(issuer=unverified_claims.get("iss"))
-                authprovider = cls.get_authprovider(token_value, idp_type)
-                oauth2_settings = OAuth2Settings.from_authprovider(authprovider)
+            idp_type = cls.get_oauth2_idp(issuer=unverified_claims.get("iss"))
+            authprovider = cls.get_authprovider(token_value, idp_type)
+            oauth2_settings = OAuth2Settings.from_authprovider(authprovider)
 
-                access_claims = cls.validate_access_token(
-                    token_value=token_value,
-                    token_headers=header,
-                    authprovider=authprovider,
-                    oauth2_settings=oauth2_settings,
-                )
-                user_info = cls.get_user_info_from_provider(
-                    access_token=token_value,
-                    oauth2_settings=oauth2_settings,
-                )
-            except (
-                MissingRequiredClaimError,
-                InvalidTokenError,
-                InvalidSignatureError,
-                HTTPError,
-            ) as e:
-                raise HTTPException(
-                    401,
-                    detail={
-                        "loc": ["headers", "Authorization"],
-                        "msg": f"{e.__class__.__name__}: {e}",
-                        "type": e.__class__.__name__,
-                    },
-                )
-            user_data = cls.assemble_user_data(access_claims, user_info)
-            infostar = cls.assemble_infostar(request, user_data, authprovider)
-            user_email = user_data["user_email"]
-            auth_provider_org_ref = authprovider.organization_ref.model_dump()
-
-            cls.CACHE[token_value] = (infostar, user_email, auth_provider_org_ref)
+            access_claims = cls.validate_access_token(
+                token_value=token_value,
+                token_headers=header,
+                authprovider=authprovider,
+                oauth2_settings=oauth2_settings,
+            )
+            exp = access_claims.get("exp")
+            user_info = UserInfo.get_user_info(
+                exp=exp,
+                access_token=token_value,
+                oauth2_settings=oauth2_settings,
+            )
+        except (
+            MissingRequiredClaimError,
+            InvalidTokenError,
+            InvalidSignatureError,
+            HTTPError,
+        ) as e:
+            raise HTTPException(
+                401,
+                detail={
+                    "loc": ["headers", "Authorization"],
+                    "msg": f"{e.__class__.__name__}: {e}",
+                    "type": e.__class__.__name__,
+                },
+            )
+        user_data = cls.assemble_user_data(access_claims, user_info)
+        infostar = cls.assemble_infostar(request, user_data, authprovider)
+        user_email = user_data["user_email"]
+        auth_provider_org_ref = authprovider.organization_ref.model_dump()
 
         request.state.infostar = infostar
         logger.debug("Assembling Creator based on Infostar.")
