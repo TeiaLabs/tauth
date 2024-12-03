@@ -40,18 +40,24 @@ class RequestAuthenticator:
                 handle=token_obj.entity.handle,
                 owner_handle=token_obj.entity.owner_handle,
             )
+            original_entity = None
             if impersonate_handle is not None:
                 await cls.can_impersonate(request, entity, token_obj)
                 logger.info(
                     f"Impersonating {impersonate_handle} on behalf of {token_obj.entity.handle}"
                 )
+                original_entity = entity
                 entity = EntityDAO.from_handle_assert(
                     handle=impersonate_handle,
                     owner_handle=impersonate_owner_handle,
                 )
 
             infostar = cls.create_infostar_from_entity(
-                entity, token_obj, request
+                entity,
+                token_obj,
+                request,
+                request_id=PyObjectId(),
+                original=original_entity,
             )
             creator = Creator.from_infostar(infostar)
             cls.CACHE[api_key_header] = (creator, infostar)
@@ -89,12 +95,17 @@ class RequestAuthenticator:
 
     @classmethod
     def create_infostar_from_entity(
-        cls, entity: EntityDAO, token: TauthTokenDAO, request: Request
-    ):
+        cls,
+        entity: EntityDAO,
+        token: TauthTokenDAO,
+        request: Request,
+        request_id: PyObjectId,
+        original: EntityDAO | None = None,
+    ) -> Infostar:
         owner_ref = entity.owner_ref.handle if entity.owner_ref else ""
         ip = get_request_ip(request)
         infostar = Infostar(
-            request_id=PyObjectId(),
+            request_id=request_id,
             apikey_name=token.name,
             authprovider_type="tauth-key",
             authprovider_org=owner_ref,
@@ -103,5 +114,16 @@ class RequestAuthenticator:
             user_handle=entity.handle,
             user_owner_handle=owner_ref,
             client_ip=ip,
+            original=(
+                cls.create_infostar_from_entity(
+                    entity=original,
+                    token=token,
+                    request=request,
+                    request_id=request_id,
+                    original=None,
+                )
+                if original
+                else None
+            ),
         )
         return infostar
