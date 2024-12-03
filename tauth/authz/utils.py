@@ -9,6 +9,7 @@ from tauth.authz.permissions.controllers import (
     read_permissions_from_roles,
 )
 from tauth.authz.permissions.schemas import PermissionContext
+from tauth.schemas.infostar import Infostar
 
 from ..authn.tauth_keys.utils import parse_key
 
@@ -47,7 +48,9 @@ def get_permission_set_from_roles(
 
 
 def get_allowed_permissions(request: Request) -> set[PermissionContext] | None:
-    if request.state.infostar.authprovider_type == "tauth-key":
+    infostar: Infostar = request.state.infostar
+    # If it is an impersonation, do not use token permissions
+    if infostar.authprovider_type == "tauth-key" and infostar.original is None:
         token = request.headers.get("Authorization")
         assert token
         token_obj = resolve_token(token)
