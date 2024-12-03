@@ -1,9 +1,12 @@
+import contextlib
 from datetime import datetime
 from hashlib import sha256
 from typing import Any, Self
 
 import httpx
 import jwt as pyjwt
+import pymongo
+import pymongo.errors
 from fastapi import BackgroundTasks, HTTPException, Request
 from fastapi import status as s
 from httpx import HTTPError
@@ -14,12 +17,13 @@ from jwt import (
 )
 from loguru import logger
 from pytz import UTC
-from redbaby.database import DB
 from redbaby.pyobjectid import PyObjectId
 
 from ...authproviders.models import AuthProviderDAO
 from ...schemas import Creator, Infostar
+from ...settings import Settings
 from ...utils import reading
+from .models import UserInfoDAO
 from .schemas import OAuth2Settings
 from .utils import (
     get_signing_key,
@@ -30,8 +34,6 @@ from .utils import (
 
 
 class UserInfo:
-    CACHE_DB_NAME = "cache"
-    CACHE_COLLECTION_NAME = "userinfo"
     CACHE_DEFAULT_TIMEOUT = 60 * 60 * 1  # 1h
 
     @classmethod
@@ -46,20 +48,28 @@ class UserInfo:
 
         :param access_token: Access token.
         :param data: User info data
-        :param ttl: Cache time to live in seconds
+        :param exp: Cache expiration time. It is based on
+            the `exp` claim of the access token.
         """
 
-        db = DB.get(db_name=cls.CACHE_DB_NAME)
-        coll = db[cls.CACHE_COLLECTION_NAME]
+        coll = UserInfoDAO.collection(alias=Settings.get().REDBABY_ALIAS)
 
         hashed_token = sha256(access_token.encode()).hexdigest()
         data["hashed_token"] = hashed_token
         if exp is None:
             exp = datetime.now(UTC).timestamp() + UserInfo.CACHE_DEFAULT_TIMEOUT
 
-        data["exp"] = exp
+        # Delete expired caches
+        coll.delete_many({"exp": {"$lt": datetime.now(UTC).timestamp()}})
 
-        coll.insert_one(data)
+        data["exp"] = exp
+        with contextlib.suppress(pymongo.errors.DuplicateKeyError):
+            """
+            Duplicate key errors will be tolerated given that multiple
+            workers are running at the same time and might concurrently
+            attempt to create a new record at once.
+            """
+            coll.insert_one(data)
 
     @classmethod
     def _try_read(cls: type[Self], access_token: str) -> Any | None:
@@ -75,8 +85,7 @@ class UserInfo:
         now = datetime.now(UTC).timestamp()
         hashed_token = sha256(access_token.encode()).hexdigest()
 
-        db = DB.get(db_name=cls.CACHE_DB_NAME)
-        coll = db[cls.CACHE_COLLECTION_NAME]
+        coll = UserInfoDAO.collection(alias=Settings.get().REDBABY_ALIAS)
         value = coll.find_one(
             {
                 "hashed_token": hashed_token,
