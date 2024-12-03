@@ -25,12 +25,13 @@ def create_app() -> FastAPI:
         description="**T**eia **Auth**entication Service.",
         version=version("tauth"),
     )
-    dependencies.init_app(app, settings)
 
     # Routes
     @app.get("/", status_code=200, tags=["health 🩺"])
     def _():
         return {"status": "ok"}
+
+    dependencies.init_app(app, settings)
 
     router = APIRouter()
     router.include_router(get_router())
