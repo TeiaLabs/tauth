@@ -4,16 +4,14 @@ from hashlib import sha256
 from redbaby.pyobjectid import PyObjectId
 
 from tauth.schemas.infostar import Infostar
-from tauth.settings import Settings
 
 from .models import TauthTokenDAO
 from .schemas import TauthTokenCreationIntermidiate, TauthTokenCreationOut
 
 
 def hash_value(value: str) -> str:
-    salt = Settings.get().SALT
 
-    return sha256(f"{value}{salt}".encode()).hexdigest()
+    return sha256(value.encode()).hexdigest()
 
 
 def generate_key_value(token_id: PyObjectId, secret: str):
