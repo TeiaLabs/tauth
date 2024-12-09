@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from redbaby.pyobjectid import PyObjectId
 
 from tauth.authn.tauth_keys.models import TauthTokenDAO
@@ -11,7 +11,7 @@ from tauth.authz.permissions.controllers import (
 from tauth.authz.permissions.schemas import PermissionContext
 from tauth.schemas.infostar import Infostar
 
-from ..authn.tauth_keys.utils import parse_key
+from ..authn.tauth_keys.utils import TauthKeyParseError, parse_key
 
 
 async def get_request_context(request: Request) -> dict:
@@ -61,6 +61,9 @@ def get_allowed_permissions(request: Request) -> set[PermissionContext] | None:
 def resolve_token(token: str):
 
     token = token.split()[-1]
-    id, _ = parse_key(token)
+    try:
+        id, _ = parse_key(token)
+    except TauthKeyParseError:
+        raise HTTPException(status_code=401, detail="Invalid tauth key format")
 
     return TauthTokenDAO.find_one_token(id)

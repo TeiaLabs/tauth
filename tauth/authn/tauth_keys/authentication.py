@@ -11,7 +11,7 @@ from ...schemas import Creator, Infostar
 from ..utils import SizedCache, get_request_ip
 from .keygen import hash_value
 from .models import TauthTokenDAO
-from .utils import parse_key
+from .utils import TauthKeyParseError, parse_key
 
 EmailStr = str
 
@@ -31,7 +31,14 @@ class RequestAuthenticator:
             creator, infostar = cls.CACHE[api_key_header]
 
         else:
-            db_id, secret = parse_key(api_key_header)
+            try:
+                db_id, secret = parse_key(api_key_header)
+            except TauthKeyParseError:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid Tauth Key format",
+                )
+
             token_obj = TauthTokenDAO.find_one_token(db_id)
 
             cls.validate_token(token_obj, secret)
