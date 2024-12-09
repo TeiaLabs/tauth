@@ -12,9 +12,10 @@ from .authz.roles.routes import router as roles_router
 from .authz.routes import router as authorization_router
 from .entities.routes import router as entities_router
 from .legacy import client, tokens
-from .resource_management.access import router as resource_access_router
+from .resource_management.access.routes import router as resource_access_router
 from .resource_management.resources import router as resources_router
 from .settings import Settings
+from .tauth_keys.routes import router as token_router
 
 
 def create_app() -> FastAPI:
@@ -24,12 +25,13 @@ def create_app() -> FastAPI:
         description="**T**eia **Auth**entication Service.",
         version=version("tauth"),
     )
-    dependencies.init_app(app, settings)
 
     # Routes
     @app.get("/", status_code=200, tags=["health 🩺"])
     def _():
         return {"status": "ok"}
+
+    dependencies.init_app(app, settings)
 
     router = APIRouter()
     router.include_router(get_router())
@@ -51,4 +53,5 @@ def get_router() -> APIRouter:
     base_router.include_router(client.router)
     base_router.include_router(tokens.router)
     base_router.include_router(resource_access_router)
+    base_router.include_router(token_router)
     return base_router

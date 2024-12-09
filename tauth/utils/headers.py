@@ -17,11 +17,27 @@ AccessTokenHeader = Annotated[
     HTTPAuthorizationCredentials | None,
     Security(HTTPBase(scheme="bearer", auto_error=False)),
 ]
+ImpersonateEntityHandleHeader = Annotated[
+    str | None,
+    Header(
+        alias="X-Impersonate-Entity-Handle",
+        description="Impersonate another entity.",
+    ),
+]
+ImpersonateEntityOwnerHeader = Annotated[
+    str | None,
+    Header(
+        alias="X-Impersonate-Entity-Owner",
+        description="Impersonate another entity.",
+    ),
+]
 
 AuthHeaders = Annotated[
     *tuple[
         UserEmail,
         AccessTokenHeader,
+        ImpersonateEntityHandleHeader,
+        ImpersonateEntityOwnerHeader,
     ],
     "Headers required for authentication.",
 ]
@@ -33,19 +49,25 @@ AuthHeaderInjectorParams = Annotated[
 
 
 def auth_headers_injector(
-    auth_fn: Callable[[AuthHeaderInjectorParams], Any | Coroutine[Any, Any, Any]],
+    auth_fn: Callable[
+        [AuthHeaderInjectorParams], Any | Coroutine[Any, Any, Any]
+    ],
 ) -> Callable[[AuthHeaderInjectorParams], Any]:
     async def async_wrapper(
         request: Request,
         background_tasks: BackgroundTasks,
         user_email: UserEmail = None,
         authorization: AccessTokenHeader = None,
+        impersonate_entity_handle: ImpersonateEntityHandleHeader = None,
+        impersonate_entity_owner: ImpersonateEntityOwnerHeader = None,
     ):
         result = await auth_fn(
             request,
             background_tasks,
             user_email,
             authorization,
+            impersonate_entity_handle,
+            impersonate_entity_owner,
         )
         return result
 
@@ -54,12 +76,16 @@ def auth_headers_injector(
         background_tasks: BackgroundTasks,
         user_email: UserEmail = None,
         authorization: AccessTokenHeader = None,
+        impersonate_entity_handle: ImpersonateEntityHandleHeader = None,
+        impersonate_entity_owner: ImpersonateEntityOwnerHeader = None,
     ):
         result = auth_fn(
             request,
             background_tasks,
             user_email,
             authorization,
+            impersonate_entity_handle,
+            impersonate_entity_owner,
         )
         return result
 
