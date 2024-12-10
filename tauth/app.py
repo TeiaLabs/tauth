@@ -13,7 +13,7 @@ from .authz.routes import router as authorization_router
 from .entities.routes import router as entities_router
 from .legacy import client, tokens
 from .resource_management.access.routes import router as resource_access_router
-from .resource_management.resources import router as resources_router
+from .resource_management.resources.routes import router as resources_router
 from .settings import Settings
 from .tauth_keys.routes import router as token_router
 
