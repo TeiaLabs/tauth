@@ -21,7 +21,7 @@ async def get_request_context(request: Request) -> dict:
     context["path"] = request.path_params
     context["method"] = request.method
     context["url"] = str(request.url)
-    # Only
+
     content_type = request.headers.get("content-type", "")
     if (
         content_type

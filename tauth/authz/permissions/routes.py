@@ -56,8 +56,10 @@ async def create_one(
         entity_ref=entity_ref,
         **permission_in.model_dump(exclude={"entity_ref"}),
     )
-    role = creation.create_one(schema_in, PermissionDAO, infostar=infostar)
-    return GeneratedFields(**role.model_dump(by_alias=True))
+    permission = creation.create_one(
+        schema_in, PermissionDAO, infostar=infostar
+    )
+    return GeneratedFields(**permission.model_dump(by_alias=True))
 
 
 @router.get("/{permission_id}", status_code=s.HTTP_200_OK)
@@ -69,12 +71,12 @@ async def read_one(
     infostar: Infostar = Depends(privileges.is_valid_user),
 ) -> PermissionDAO:
     logger.debug(f"Reading permission {permission_id!r}.")
-    role = reading.read_one(
+    permission = reading.read_one(
         infostar=infostar,
         model=PermissionDAO,
         identifier=permission_id,
     )
-    return role
+    return permission
 
 
 @router.get("", status_code=s.HTTP_200_OK)
@@ -151,8 +153,10 @@ async def update(
 
     permission.updated_at = datetime.now(UTC)
 
-    role_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
-    role_coll.update_one(
+    permission_coll = PermissionDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
+    )
+    permission_coll.update_one(
         {"_id": permission.id},
         {"$set": permission.model_dump()},
     )
@@ -189,8 +193,10 @@ async def delete(
             detail=f"Cannot delete permission {str(permission_id)!r} because it is used by role(s): {role_names}.",
         )
 
-    role_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
-    role_coll.delete_one({"_id": permission_id})
+    permission_coll = PermissionDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
+    )
+    permission_coll.delete_one({"_id": permission_id})
     background_tasks.add_task(remove_permission_from_entities, permission_id)
 
 

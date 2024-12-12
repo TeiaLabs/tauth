@@ -19,7 +19,7 @@ from ...entities.models import EntityDAO
 from ...schemas import Infostar
 from . import controllers
 from .models import ResourceAccessDAO
-from .schemas import GrantIn, ResourceAccessIn
+from .schemas import GrantIn, GrantResponse, ResourceAccessIn
 
 service_name = Path(__file__).parents[1].name
 router = APIRouter(prefix=f"/{service_name}/access", tags=[service_name])
@@ -113,8 +113,6 @@ async def grant_access(
         entity_id=entity.id, permission_id=p.id, infostar=infostar
     )
 
-    return {
-        "msg": "Granted Access to entity with permission.",
-        "permission": str(body.permission_name),
-        "entity_id": str(entity.id),
-    }
+    return GrantResponse(
+        permission=body.permission_name, entity_id=str(entity.id)
+    )
