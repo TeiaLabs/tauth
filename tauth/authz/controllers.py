@@ -35,12 +35,21 @@ async def authorize(
     authz_data.context["entity"] = entity.model_dump(mode="json")
     role_ids = map(lambda x: x.id, entity.roles)
     permissions = get_permissions_set(role_ids, entity.permissions)
+
+    owner_entity = None
+    if entity.owner_ref:
+        owner_entity = EntityDAO.from_handle_assert(
+            handle=entity.owner_ref.handle,
+            owner_handle=entity.owner_ref.owner_handle,
+        )
+        inherited_role_ids = map(lambda x: x.id, entity.roles)
+        inherited_permissions = get_permissions_set(
+            inherited_role_ids, owner_entity.permissions
+        )
+        permissions = permissions.union(inherited_permissions)
+
     if allowed_permissions:
         permissions = permissions.intersection(allowed_permissions)
-
-    authz_data.context["permissions"] = [
-        permission.model_dump(mode="json") for permission in permissions
-    ]
 
     if authz_data.resources:
         logger.debug(
@@ -57,8 +66,13 @@ async def authorize(
                 status_code=s.HTTP_401_UNAUTHORIZED,
                 detail=dict(msg=message),
             )
+        entity_permissions = set(entity.permissions)
+        if owner_entity:
+            entity_permissions = entity_permissions.union(
+                owner_entity.permissions
+            )
         resource_permissions = read_many_permissions(
-            entity.permissions, "resource", entity_ref=service.to_ref()
+            entity_permissions, "resource", entity_ref=service.to_ref()
         )
         permissions = permissions.union(resource_permissions)
         resources = get_context_resources(
@@ -66,6 +80,14 @@ async def authorize(
             service=service,
             resource_collection=authz_data.resources.resource_collection,
         )
+        if owner_entity:
+            inherited_resources = get_context_resources(
+                entity=owner_entity,
+                service=service,
+                resource_collection=authz_data.resources.resource_collection,
+            )
+            resources = set(inherited_resources).union(resources)
+
         authz_data.context["resources"] = [
             resource.model_dump(mode="json", by_alias=True)
             for resource in resources

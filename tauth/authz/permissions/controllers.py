@@ -62,7 +62,7 @@ def read_permissions_from_roles(
 
 
 def read_many_permissions(
-    perms: list[PyObjectId],
+    perms: Iterable[PyObjectId],
     type: PermissionType | None = None,
     entity_ref: EntityRef | None = None,
 ) -> set[PermissionContext]:
@@ -70,7 +70,7 @@ def read_many_permissions(
     permission_coll = PermissionDAO.collection(
         alias=Settings.get().REDBABY_ALIAS
     )
-    filters: dict = {"_id": {"$in": perms}}
+    filters: dict = {"_id": {"$in": list(perms)}}
     if type:
         filters["type"] = type
     if entity_ref:

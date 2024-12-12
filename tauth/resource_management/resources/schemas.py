@@ -47,3 +47,11 @@ class ResourceContext(BaseModel):
     resource_collection: str
     ids: list[Identifier]
     metadata: dict[str, Any]
+
+    def __hash__(self):
+        return hash(str(self.id))
+
+    def __eq__(self, other: "ResourceContext") -> bool:
+        if isinstance(other, ResourceContext):
+            return self.id == other.id
+        return False
