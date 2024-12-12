@@ -42,7 +42,7 @@ async def authorize(
             handle=entity.owner_ref.handle,
             owner_handle=entity.owner_ref.owner_handle,
         )
-        inherited_role_ids = map(lambda x: x.id, entity.roles)
+        inherited_role_ids = map(lambda x: x.id, owner_entity.roles)
         inherited_permissions = get_permissions_set(
             inherited_role_ids, owner_entity.permissions
         )
