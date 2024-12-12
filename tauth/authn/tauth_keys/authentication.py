@@ -67,7 +67,7 @@ class RequestAuthenticator:
                 original=original_entity,
             )
             creator = Creator.from_infostar(infostar)
-            cls.CACHE[api_key_header] = (creator, infostar)
+            # cls.CACHE[api_key_header] = (creator, infostar)
 
         request.state.infostar = infostar
         request.state.creator = creator

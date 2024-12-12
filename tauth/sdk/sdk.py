@@ -1,5 +1,8 @@
+from collections.abc import Iterable
+
 import httpx
 
+from ..authz.permissions.models import PermissionDAO
 from ..resource_management.access.schemas import GrantIn
 from ..resource_management.resources.schemas import ResourceIn
 from ..schemas.gen_fields import GeneratedFields
@@ -23,7 +26,21 @@ class TAuthClient:
 
     def grant_access(self, grant: GrantIn):
         response = self.http_client.post(
-            "/resource_management/access/$grant", json=grant.model_dump()
+            "/resource_management/access/$grant",
+            json=grant.model_dump(mode="json"),
         )
         response.raise_for_status()
         return response.json()
+
+    def delete_permission(self, permission_id: str):
+        response = self.http_client.delete(
+            f"/authz/permissions/{permission_id}"
+        )
+        response.raise_for_status()
+        return response.status_code
+
+    def read_permissions(self, params: dict) -> Iterable[PermissionDAO]:
+        response = self.http_client.get("/authz/permissions", params=params)
+        response.raise_for_status()
+        perms: list = response.json()
+        return map(lambda x: PermissionDAO(**x), perms)
