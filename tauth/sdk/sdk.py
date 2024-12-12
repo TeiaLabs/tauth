@@ -42,5 +42,5 @@ class TAuthClient:
     def read_permissions(self, params: dict) -> Iterable[PermissionDAO]:
         response = self.http_client.get("/authz/permissions", params=params)
         response.raise_for_status()
-        perms: list = response.json()
+        perms = response.json()
         return map(lambda x: PermissionDAO(**x), perms)
