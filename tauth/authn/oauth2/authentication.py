@@ -9,7 +9,7 @@ import pymongo
 import pymongo.errors
 from fastapi import BackgroundTasks, HTTPException, Request
 from fastapi import status as s
-from httpx import HTTPError
+from httpx import HTTPError, HTTPStatusError
 from jwt import (
     InvalidSignatureError,
     InvalidTokenError,
@@ -36,6 +36,7 @@ from .utils import (
 
 class UserInfo:
     CACHE_DEFAULT_TIMEOUT = 60 * 60 * 1  # 1h
+    MAX_RETRIES = 5
 
     @classmethod
     def _cache(
@@ -58,9 +59,7 @@ class UserInfo:
         hashed_token = sha256(access_token.encode()).hexdigest()
         data["hashed_token"] = hashed_token
         if exp is None:
-            exp = (
-                datetime.now(UTC).timestamp() + UserInfo.CACHE_DEFAULT_TIMEOUT
-            )
+            exp = datetime.now(UTC).timestamp() + UserInfo.CACHE_DEFAULT_TIMEOUT
 
         # Delete expired caches
         coll.delete_many({"exp": {"$lt": datetime.now(UTC).timestamp()}})
@@ -107,21 +106,36 @@ class UserInfo:
         exp: float | None,
         access_token: str,
         oauth2_settings: OAuth2Settings,
+        attempts: int = 0,
     ):
         user_info = cls._try_read(access_token=access_token)
         if not user_info:
-            res = httpx.get(
-                oauth2_settings.userinfo_url,
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            res.raise_for_status()
-            user_info = res.json()
+            try:
+                res = httpx.get(
+                    oauth2_settings.userinfo_url,
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                res.raise_for_status()
+                user_info = res.json()
 
-            cls._cache(
-                access_token=access_token,
-                exp=exp,
-                data=user_info,
-            )
+                cls._cache(
+                    access_token=access_token,
+                    exp=exp,
+                    data=user_info,
+                )
+            except HTTPStatusError:
+                if attempts == cls.MAX_RETRIES:
+                    raise HTTPException(
+                        status_code=s.HTTP_401_UNAUTHORIZED,
+                        detail={"msg": "Could not retrieve user info."},
+                    )
+
+                return cls.get_user_info(
+                    exp=exp,
+                    access_token=access_token,
+                    oauth2_settings=oauth2_settings,
+                    attempts=attempts + 1,
+                )
 
         return user_info
 
@@ -144,9 +158,7 @@ class RequestAuthenticator:
 
         raise HTTPException(
             status_code=s.HTTP_401_UNAUTHORIZED,
-            detail={
-                "msg": f"No valid OAuth2 provider found. Got issuer: {issuer!r}."
-            },
+            detail={"msg": f"No valid OAuth2 provider found. Got issuer: {issuer!r}."},
         )
 
     @staticmethod
@@ -200,9 +212,7 @@ class RequestAuthenticator:
         if kid is None:
             raise InvalidTokenError("Missing 'kid' header.")
 
-        signing_key = get_signing_key(
-            kid, oauth2_settings.jwks_url, authprovider.type
-        )
+        signing_key = get_signing_key(kid, oauth2_settings.jwks_url, authprovider.type)
         if signing_key is None:
             raise InvalidSignatureError("No signing key found.")
 
