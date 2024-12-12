@@ -3,7 +3,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+)
 from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
@@ -48,8 +56,10 @@ async def create_one(
         entity_ref=entity_ref,
         **permission_in.model_dump(exclude={"entity_ref"}),
     )
-    role = creation.create_one(schema_in, PermissionDAO, infostar=infostar)
-    return GeneratedFields(**role.model_dump(by_alias=True))
+    permission = creation.create_one(
+        schema_in, PermissionDAO, infostar=infostar
+    )
+    return GeneratedFields(**permission.model_dump(by_alias=True))
 
 
 @router.get("/{permission_id}", status_code=s.HTTP_200_OK)
@@ -61,12 +71,12 @@ async def read_one(
     infostar: Infostar = Depends(privileges.is_valid_user),
 ) -> PermissionDAO:
     logger.debug(f"Reading permission {permission_id!r}.")
-    role = reading.read_one(
+    permission = reading.read_one(
         infostar=infostar,
         model=PermissionDAO,
         identifier=permission_id,
     )
-    return role
+    return permission
 
 
 @router.get("", status_code=s.HTTP_200_OK)
@@ -75,6 +85,7 @@ async def read_many(
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
     name: str | None = Query(None),
+    ends_with: str | None = Query(None),
     entity_handle: str | None = Query(None),
 ):
     logger.debug(f"Reading permissions with filters: {request.query_params}")
@@ -88,16 +99,21 @@ async def read_many(
             "$regex": re.escape(name),
             "$options": "i",
         }
+    if ends_with:
+        decoded_query_params.pop("ends_with")
+        decoded_query_params["name"] = {  # type: ignore
+            "$regex": f"{ends_with}$",
+        }
     if entity_handle:
         handle = decoded_query_params.pop("entity_handle")
         decoded_query_params["entity_ref.handle"] = handle
     logger.debug(f"Decoded query params: {decoded_query_params}")
-    roles = reading.read_many(
+    permissions = reading.read_many(
         infostar=infostar,
         model=PermissionDAO,
         **decoded_query_params,
     )
-    return roles
+    return permissions
 
 
 @router.patch("/{permission_id}", status_code=s.HTTP_204_NO_CONTENT)
@@ -137,8 +153,10 @@ async def update(
 
     permission.updated_at = datetime.now(UTC)
 
-    role_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
-    role_coll.update_one(
+    permission_coll = PermissionDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
+    )
+    permission_coll.update_one(
         {"_id": permission.id},
         {"$set": permission.model_dump()},
     )
@@ -152,7 +170,8 @@ async def update(
 )
 async def delete(
     permission_id: PyObjectId,
-    infostar: Infostar = Depends(privileges.is_valid_admin),
+    background_tasks: BackgroundTasks,
+    infostar: Infostar = Depends(privileges.is_valid_user),
 ):
     # We need to block deleting a permission if a role is using it.
     logger.debug(f"Deleting permission with ID: {permission_id!r}.")
@@ -174,5 +193,23 @@ async def delete(
             detail=f"Cannot delete permission {str(permission_id)!r} because it is used by role(s): {role_names}.",
         )
 
-    role_coll = PermissionDAO.collection(alias=Settings.get().REDBABY_ALIAS)
-    role_coll.delete_one({"_id": permission_id})
+    permission_coll = PermissionDAO.collection(
+        alias=Settings.get().REDBABY_ALIAS
+    )
+    permission_coll.delete_one({"_id": permission_id})
+    background_tasks.add_task(remove_permission_from_entities, permission_id)
+
+
+def remove_permission_from_entities(permission_id: PyObjectId) -> None:
+    logger.debug(f"Removing permission {permission_id!r} from entities.")
+
+    entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
+
+    result = entity_coll.update_many(
+        {"permissions": permission_id},
+        {"$pull": {"permissions": permission_id}},
+    )
+
+    logger.debug(
+        f"Removed permission {permission_id!r} from {result.modified_count} entities."
+    )

@@ -6,9 +6,9 @@ from loguru import logger
 from pymongo.errors import DuplicateKeyError
 from redbaby.pyobjectid import PyObjectId
 
+from tauth.dependencies.authentication import authenticate
 from tauth.resource_management.access.models import ResourceAccessDAO
 
-from ...authz import privileges
 from ...entities.models import EntityDAO
 from ...schemas import Infostar
 from ...schemas.gen_fields import GeneratedFields
@@ -28,7 +28,7 @@ async def create_one(
     body: ResourceIn = Body(
         openapi_examples=ResourceIn.get_resource_in_examples()
     ),
-    infostar: Infostar = Depends(privileges.is_valid_admin),
+    infostar: Infostar = Depends(authenticate),
 ):
 
     service_entity = EntityDAO.from_handle(
@@ -63,7 +63,7 @@ async def create_one(
 @router.get("", status_code=s.HTTP_200_OK)
 @router.get("/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_many(
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
     service_handle: str | None = Query(None),
     resource_collection: str | None = Query(None),
 ) -> list[ResourceDAO]:
@@ -82,7 +82,7 @@ async def read_many(
 )
 async def read_one(
     resource_id: PyObjectId,
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
 ):
     logger.debug(f"Reading resource {resource_id!r}.")
     resource = reading.read_one(
@@ -101,7 +101,7 @@ async def read_one(
 )
 async def delete_one(
     resource_id: PyObjectId,
-    infostar: Infostar = Depends(privileges.is_valid_admin),
+    infostar: Infostar = Depends(authenticate),
 ):
     logger.debug(f"Trying to delete resource {resource_id!r}")
     alias = Settings.get().REDBABY_ALIAS
@@ -128,7 +128,7 @@ async def delete_one(
 async def update_one(
     resource_id: PyObjectId,
     body: ResourceUpdate = Body(),
-    infostar: Infostar = Depends(privileges.is_valid_user),
+    infostar: Infostar = Depends(authenticate),
 ):
     reading.read_one(
         infostar=infostar,

@@ -22,7 +22,12 @@ async def get_request_context(request: Request) -> dict:
     context["method"] = request.method
     context["url"] = str(request.url)
 
-    if await request.body():
+    content_type = request.headers.get("content-type", "")
+    if (
+        content_type
+        and "application/json" in content_type
+        and await request.body()
+    ):
         context["body"] = await request.json()
 
     return context
