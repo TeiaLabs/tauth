@@ -1,8 +1,11 @@
 from collections.abc import Iterable
+from copy import deepcopy
 
 import httpx
 
+from ..authz.engines.interface import AuthorizationResponse
 from ..authz.permissions.models import PermissionDAO
+from ..authz.policies.schemas import AuthorizationDataIn
 from ..resource_management.access.schemas import GrantIn, GrantResponse
 from ..resource_management.resources.schemas import ResourceIn
 from ..schemas.gen_fields import GeneratedFields
@@ -33,9 +36,7 @@ class TAuthClient:
         return GrantResponse(**response.json())
 
     def delete_permission(self, permission_id: str) -> int:
-        response = self.http_client.delete(
-            f"/authz/permissions/{permission_id}"
-        )
+        response = self.http_client.delete(f"/authz/permissions/{permission_id}")
         response.raise_for_status()
         return response.status_code
 
@@ -44,3 +45,21 @@ class TAuthClient:
         response.raise_for_status()
         perms = response.json()
         return map(lambda x: PermissionDAO(**x), perms)
+
+    def authorize(
+        self,
+        authz_data: AuthorizationDataIn,
+        impersonate_entity_handle: str | None = None,
+        impersonate_entity_owner: str | None = None,
+    ) -> AuthorizationResponse:
+        headers = deepcopy(self.headers)
+        if impersonate_entity_handle:
+            headers["Impersonate-Entity-Handle"] = impersonate_entity_handle
+        if impersonate_entity_owner:
+            headers["Impersonate-Entity-Owner"] = impersonate_entity_owner
+
+        response = self.http_client.post(
+            "/authz", json=authz_data.model_dump(), headers=headers
+        )
+        response.raise_for_status()
+        return AuthorizationResponse(**response.json())
