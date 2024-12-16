@@ -245,6 +245,7 @@ class RequestAuthenticator:
                     raise MissingRequiredClaimError(c)
 
         user_data = {
+            **user_info,
             "user_id": user_info.get("sub"),
             "user_email": user_info.get("email"),
         }
@@ -252,7 +253,9 @@ class RequestAuthenticator:
 
     @staticmethod
     def assemble_infostar(
-        request: Request, user_data: dict, authprovider: AuthProviderDAO
+        request: Request,
+        user_data: dict,
+        authprovider: AuthProviderDAO,
     ) -> Infostar:
         logger.debug("Assembling Infostar.")
         ip = get_request_ip(request)
@@ -262,7 +265,7 @@ class RequestAuthenticator:
             apikey_name="jwt",
             authprovider_type=authprovider.type,
             authprovider_org=authprovider.organization_ref.handle,
-            extra={},
+            extra=user_data,  # type: ignore
             service_handle=authprovider.service_ref.handle,
             user_handle=user_data["user_email"],
             user_owner_handle=authprovider.organization_ref.handle,
