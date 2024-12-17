@@ -29,6 +29,14 @@ class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
                 ],
             ),
             IndexModel([("service_ref.handle", 1)]),
-            IndexModel([("ids", 1)]),
+            IndexModel([("resource_identifier", 1)]),
+            IndexModel(
+                [
+                    ("resource_collection", 1),
+                    ("resource_identifier", 1),
+                    ("metadata.alias", 1),
+                ],
+                sparse=True,
+            ),
         ]
         return idxs

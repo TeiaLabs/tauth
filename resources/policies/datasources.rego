@@ -2,54 +2,84 @@ package tauth.datasources
 
 import rego.v1
 
+import data.tauth.utils.check_permission
 import data.tauth.utils.build_permission_name
 
-admin_resources := _filter_resource(build_permission_name(["ds", "admin"]))
+org_alias := trim_prefix(input.entity.owner_ref.handle, "/")
 
-write_resources := admin_resources | _filter_resource(build_permission_name(["ds", "write"]))
+alias := object.get(input.request.query, "db_alias", org_alias)
 
-read_resources := _filter_resource(build_permission_name(["ds", "read"])) | write_resources
+datasource_resources = mongodb.query(
+	"resources",
+	{
+		"resource_collection": "datasources",
+		"resource_identifier": datasource_name,
+		"metadata.alias": alias,
+	},
+)
 
-default has_admin := false
+datasource_name := input.request.path.name
 
-has_admin := resource if {
-	resource := has_resource_access(admin_resources)
+
+not_found := {"msg": "datasource not found"}
+
+default ds2_has_admin := false
+
+default ds2_has_read := false
+
+default ds2_has_write := false
+
+ds2_has_admin = not_found if {
+	count(datasource_resources) == 0
 }
 
-default has_write := false
-
-has_write := resource if {
-	resource := has_resource_access(write_resources)
+ds2_has_admin = resource if {
+	raw_resource := has_resource_access("admin")
+	resource := parse_resource(raw_resource)
 }
 
-default has_read := false
-
-has_read := resource if {
-	resource := has_resource_access(read_resources)
+ds2_has_read = not_found if {
+	count(datasource_resources) == 0
 }
 
-has_resource_access(resources) := resource if {
-	some resource in resources
-	resource.id == input.request.path.name
-	has_valid_alias(resource)
+ds2_has_read = resource if {
+	raw_resource := has_resource_access("read")
+	resource := parse_resource(raw_resource)
 }
 
-has_valid_alias(resource) if {
-	org_alias := trim_prefix(input.entity.owner_ref.handle, "/")
-	alias := object.get(input.request.query, "db_alias", org_alias)
-	resource.metadata.alias == alias
+ds2_has_read = resource if {
+	raw_resource := has_resource_access("write")
+	resource := parse_resource(raw_resource)
 }
 
-# set comprehension for allowed resources
-_filter_resource(permission_prefix) := {allowed_ids |
-	some permission in input.permissions
-	startswith(permission.name, permission_prefix)
-	some r in input.resources
-	endswith(permission.name, r._id)
-	some id in r.ids
-	allowed_ids = {
-		"id": id.id,
-		"resource_ref": r._id,
-		"metadata": id.metadata,
+ds2_has_read = resource if {
+	raw_resource := has_resource_access("admin")
+	resource := parse_resource(raw_resource)
+}
+
+ds2_has_write = not_found if {
+	count(datasource_resources) == 0
+}
+
+ds2_has_write = resource if {
+	raw_resource := has_resource_access("write")
+	resource := parse_resource(raw_resource)
+}
+
+ds2_has_write = resource if {
+	raw_resource := has_resource_access("admin")
+	resource := parse_resource(raw_resource)
+}
+
+has_resource_access(permission_level) := resource if {
+	some resource in datasource_resources
+	check_permission(build_permission_name(["ds", permission_level, resource.id]))
+}
+
+parse_resource(raw_resource) := resource if {
+	resource = {
+		"resource_identifier": raw_resource.resource_identifier,
+		"resource_ref": raw_resource.id,
+		"metadata": raw_resource.metadata,
 	}
 }
