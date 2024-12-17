@@ -18,6 +18,8 @@ import (
 var mongoClient *mongo.Client
 var mongoDatabase string
 
+var allowed_collections = []string{"resources"}
+
 func getFromEnv(var_name string) string {
 	uri := os.Getenv(var_name)
 	if uri == "" {
@@ -97,11 +99,24 @@ func main() {
 		os.Exit(1)
 	}
 }
+func check_collection_allowed(collection string) bool {
+	for _, allowed_collection := range allowed_collections {
+		if collection == allowed_collection {
+			return true
+		}
+	}
+	return false
+}
 
 // performMongoQuery executes a query on the specified collection
 func performMongoQuery(collection string, queryMap map[string]interface{}) ([]map[string]interface{}, error) {
 	if mongoClient == nil {
 		return nil, fmt.Errorf("MongoDB client not initialized")
+	}
+
+	if !check_collection_allowed(collection) {
+		fmt.Println("Collection not allowed")
+		return nil, fmt.Errorf("collection not allowed")
 	}
 
 	// Get database and collection
