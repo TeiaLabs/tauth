@@ -7,13 +7,12 @@ from redbaby.document import Document
 
 from ...entities.schemas import EntityRef
 from ...utils.teia_behaviors import Authoring
-from .schemas import Identifier
 
 
 class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     service_ref: EntityRef
     resource_collection: str
-    ids: list[Identifier]
+    resource_identifier: str
     metadata: dict[str, Any]
 
     @classmethod

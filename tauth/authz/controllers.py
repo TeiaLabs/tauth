@@ -8,7 +8,6 @@ from tauth.authz.permissions.schemas import PermissionContext
 
 from ..authz.engines.factory import AuthorizationEngine
 from ..entities.models import EntityDAO
-from ..resource_management.resources.controllers import get_context_resources
 from ..utils.errors import EngineException
 from .policies.schemas import AuthorizationDataIn
 from .utils import (
@@ -53,7 +52,7 @@ async def authorize(
 
     if authz_data.resources:
         logger.debug(
-            f"Getting resources for service: {authz_data.resources.service_ref.handle}."
+            f"Getting resource permissions for service: {authz_data.resources.service_ref.handle}."
         )
         service = EntityDAO.from_handle(
             handle=authz_data.resources.service_ref.handle,
@@ -75,23 +74,6 @@ async def authorize(
             entity_permissions, "resource", entity_ref=service.to_ref()
         )
         permissions = permissions.union(resource_permissions)
-        resources = get_context_resources(
-            entity=entity,
-            service=service,
-            resource_collection=authz_data.resources.resource_collection,
-        )
-        if owner_entity:
-            inherited_resources = get_context_resources(
-                entity=owner_entity,
-                service=service,
-                resource_collection=authz_data.resources.resource_collection,
-            )
-            resources = set(inherited_resources).union(resources)
-
-        authz_data.context["resources"] = [
-            resource.model_dump(mode="json", by_alias=True)
-            for resource in resources
-        ]
 
     authz_data.context["permissions"] = [
         permission.model_dump(mode="json") for permission in permissions
