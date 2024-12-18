@@ -4,6 +4,13 @@ ARG PYTHON_VERSION=3.12.4
 ARG PYTHON_IMAGE_TAG=python:${PYTHON_VERSION}-slim
 ARG VIRTUAL_ENV=/root/.venv
 
+
+FROM golang:1.23.4 AS build-opa
+WORKDIR /build_opa
+COPY ./opa ./
+RUN go mod download && go build -o opa && chmod u+x ./opa
+
+
 FROM ${PYTHON_IMAGE_TAG} AS base
 ARG VIRTUAL_ENV
 ENV \
@@ -19,8 +26,10 @@ ENV \
 RUN apt update && apt install -y git wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 # Install OPA
-RUN wget https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O opa \
-    && chmod u+x ./opa
+# RUN wget https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O opa \
+#     && chmod u+x ./opa
+
+COPY --from=build-opa ./build_opa/opa ./
 
 FROM base AS build-base
 ENV \
