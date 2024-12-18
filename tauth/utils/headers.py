@@ -2,14 +2,19 @@ import inspect
 from collections.abc import Callable, Coroutine
 from typing import Annotated, Any
 
-from fastapi import BackgroundTasks, Header, Request, Security
+from fastapi import BackgroundTasks, Request, Security
+from fastapi.security import APIKeyHeader
 from fastapi.security.http import HTTPAuthorizationCredentials, HTTPBase
 
 UserEmail = Annotated[
     str | None,
-    Header(
-        alias="X-User-Email",
-        description="Ignore when using OAuth.",
+    Security(
+        APIKeyHeader(
+            name="X-User-Email",
+            scheme_name="X-User-Email",
+            description="Ignore when using OAuth.",
+            auto_error=False,
+        ),
     ),
 ]
 
@@ -19,16 +24,24 @@ AccessTokenHeader = Annotated[
 ]
 ImpersonateEntityHandleHeader = Annotated[
     str | None,
-    Header(
-        alias="X-Impersonate-Entity-Handle",
-        description="Impersonate another entity.",
+    Security(
+        APIKeyHeader(
+            name="X-Impersonate-Entity-Handle",
+            scheme_name="X-Impersonate-Entity-Handle",
+            description="Impersonate another entity.",
+            auto_error=False,
+        ),
     ),
 ]
 ImpersonateEntityOwnerHeader = Annotated[
     str | None,
-    Header(
-        alias="X-Impersonate-Entity-Owner",
-        description="Impersonate another entity.",
+    Security(
+        APIKeyHeader(
+            name="X-Impersonate-Entity-Owner",
+            scheme_name="X-Impersonate-Entity-Owner",
+            description="Impersonate another entity.",
+            auto_error=False,
+        ),
     ),
 ]
 
