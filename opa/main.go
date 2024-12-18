@@ -10,6 +10,7 @@ import (
 	"github.com/open-policy-agent/opa/rego"
 	"github.com/open-policy-agent/opa/types"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -118,6 +119,27 @@ func performMongoQuery(collection string, queryMap map[string]interface{}) ([]ma
 		fmt.Println("Collection not allowed")
 		return nil, fmt.Errorf("collection not allowed")
 	}
+	if idQuery, ok := queryMap["_id"].(map[string]interface{}); ok {
+		if inValues, exists := idQuery["$in"].([]interface{}); exists {
+			// Convert string IDs to ObjectIDs
+			objectIDs := make([]primitive.ObjectID, len(inValues))
+			for i, idStr := range inValues {
+				strID, ok := idStr.(string)
+				if !ok {
+					return nil, fmt.Errorf("invalid ID type in $in query")
+				}
+
+				objectID, err := primitive.ObjectIDFromHex(strID)
+				if err != nil {
+					return nil, fmt.Errorf("invalid ObjectID: %v", err)
+				}
+				objectIDs[i] = objectID
+			}
+
+			// Replace the $in value with converted ObjectIDs
+			idQuery["$in"] = objectIDs
+		}
+	}
 
 	// Get database and collection
 	db := mongoClient.Database(mongoDatabase)
@@ -138,6 +160,8 @@ func performMongoQuery(collection string, queryMap map[string]interface{}) ([]ma
 	if err = cursor.All(context.Background(), &results); err != nil {
 		return nil, err
 	}
+	fmt.Println("RESULTS FROM MONGO:")
+	fmt.Println(results)
 
 	return results, nil
 }

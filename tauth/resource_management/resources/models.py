@@ -32,6 +32,12 @@ class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
             IndexModel([("resource_identifier", 1)]),
             IndexModel(
                 [
+                    ("metadata.alias", 1),
+                ],
+                sparse=True,
+            ),
+            IndexModel(
+                [
                     ("resource_collection", 1),
                     ("resource_identifier", 1),
                     ("metadata.alias", 1),
