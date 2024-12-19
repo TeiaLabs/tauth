@@ -169,9 +169,7 @@ class RequestAuthenticator:
                 extra=[melt_key_client_extra],
                 created_by=infostar,
                 owner_ref=EntityRef(
-                    handle=org_in.handle,
-                    type="organization",
-                    owner_handle=None
+                    handle=org_in.handle, type="organization", owner_handle=None
                 ),
             )
             collection = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
@@ -185,7 +183,9 @@ class RequestAuthenticator:
             "authprovider.type": "melt-key",
         }
         if infostar.service_handle:
-            authprovider_match["service_ref.handle"] = (infostar.service_handle,)
+            authprovider_match["authprovider.service_ref.handle"] = (
+                infostar.service_handle
+            )
 
         org_handle = creator.client_name.split("/")[1]
         pipeline = [
