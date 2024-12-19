@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from fastapi import status as s
+from loguru import logger
 from pymongo.errors import DuplicateKeyError
 
 from tauth.entities.models import EntityDAO
@@ -19,6 +20,7 @@ def create_one(
         body.service_ref.handle, body.service_ref.owner_handle
     )
     if not service_entity:
+        logger.error(f"Entity with handle {body.service_ref} not found")
         raise HTTPException(
             status_code=s.HTTP_404_NOT_FOUND,
             detail=f"Entity with handle {body.service_ref} not found",
@@ -35,7 +37,6 @@ def create_one(
         ResourceDAO.collection(alias=Settings.get().REDBABY_ALIAS).insert_one(
             item.bson()
         )
-        doc = item.bson()
     except DuplicateKeyError:
         raise HTTPException(
             status_code=s.HTTP_409_CONFLICT, detail="Resource already exists"

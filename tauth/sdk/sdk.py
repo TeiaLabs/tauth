@@ -44,3 +44,10 @@ class TAuthClient:
         response.raise_for_status()
         perms = response.json()
         return map(lambda x: PermissionDAO(**x), perms)
+
+    def delete_resource(self, resource_id: str) -> int:
+        response = self.http_client.delete(
+            f"/resource_management/resources/{resource_id}"
+        )
+        response.raise_for_status()
+        return response.status_code

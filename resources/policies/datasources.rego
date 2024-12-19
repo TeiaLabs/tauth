@@ -5,9 +5,20 @@ import rego.v1
 import data.tauth.utils.check_permission
 import data.tauth.utils.build_permission_name
 
+user_email_alias := alias if {
+	handle := input.entity.handle
+	email_domain = split(handle, "@")[1]
+	alias := split(email_domain, ".")[0]
+}
+
 org_alias := trim_prefix(input.entity.owner_ref.handle, "/")
 
-alias := object.get(input.request.query, "db_alias", org_alias)
+fallback_alias := user_email_alias if {
+	org_alias == ""
+} else := org_alias
+
+alias := object.get(input.request.query, "db_alias", fallback_alias)
+
 datasource_name := input.request.path.name
 
 datasource_resources = mongodb.query(
@@ -52,12 +63,12 @@ ds2_has_read = resource if {
 }
 
 ds2_has_read = resource if {
-	raw_resource := has_resource_access("read")
+	raw_resource := has_resource_access("write")
 	resource := parse_resource(raw_resource)
 }
 
 ds2_has_read = resource if {
-	raw_resource := has_resource_access("write")
+	raw_resource := has_resource_access("admin")
 	resource := parse_resource(raw_resource)
 }
 
@@ -65,12 +76,13 @@ ds2_has_write = not_found if {
 	return_size == 0
 }
 
-ds2_has_write = not_found if {
-	count(datasource_resources) == 0
+ds2_has_write = resource if {
+	raw_resource := has_resource_access("write")
+	resource := parse_resource(raw_resource)
 }
 
 ds2_has_write = resource if {
-	raw_resource := has_resource_access("write")
+	raw_resource := has_resource_access("admin")
 	resource := parse_resource(raw_resource)
 }
 
