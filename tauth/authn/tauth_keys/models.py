@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from loguru import logger
 from pydantic import Field
 from pymongo import IndexModel
 from redbaby.behaviors.objectids import ObjectIdMixin
@@ -58,6 +59,7 @@ class TauthTokenDAO(
         collection = cls.collection(alias=Settings.get().REDBABY_ALIAS)
         r = collection.find_one({"_id": PyObjectId(id), "deleted": False})
         if not r:
+            logger.warning("API Key not found")
             raise HTTPException(
                 status_code=404,
                 detail="API Key not found",

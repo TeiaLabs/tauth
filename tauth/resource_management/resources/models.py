@@ -7,13 +7,12 @@ from redbaby.document import Document
 
 from ...entities.schemas import EntityRef
 from ...utils.teia_behaviors import Authoring
-from .schemas import Identifier
 
 
 class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
     service_ref: EntityRef
     resource_collection: str
-    ids: list[Identifier]
+    resource_identifier: str
     metadata: dict[str, Any]
 
     @classmethod
@@ -30,6 +29,20 @@ class ResourceDAO(Document, Authoring, ObjectIdMixin, ReadingMixin):
                 ],
             ),
             IndexModel([("service_ref.handle", 1)]),
-            IndexModel([("ids", 1)]),
+            IndexModel([("resource_identifier", 1)]),
+            IndexModel(
+                [
+                    ("metadata.alias", 1),
+                ],
+                sparse=True,
+            ),
+            IndexModel(
+                [
+                    ("resource_collection", 1),
+                    ("resource_identifier", 1),
+                    ("metadata.alias", 1),
+                ],
+                sparse=True,
+            ),
         ]
         return idxs

@@ -46,20 +46,9 @@ class TAuthClient:
         perms = response.json()
         return map(lambda x: PermissionDAO(**x), perms)
 
-    def authorize(
-        self,
-        authz_data: AuthorizationDataIn,
-        impersonate_entity_handle: str | None = None,
-        impersonate_entity_owner: str | None = None,
-    ) -> AuthorizationResponse:
-        headers = deepcopy(self.headers)
-        if impersonate_entity_handle:
-            headers["Impersonate-Entity-Handle"] = impersonate_entity_handle
-        if impersonate_entity_owner:
-            headers["Impersonate-Entity-Owner"] = impersonate_entity_owner
-
-        response = self.http_client.post(
-            "/authz", json=authz_data.model_dump(), headers=headers
+    def delete_resource(self, resource_id: str) -> int:
+        response = self.http_client.delete(
+            f"/resource_management/resources/{resource_id}"
         )
         response.raise_for_status()
-        return AuthorizationResponse(**response.json())
+        return response.status_code

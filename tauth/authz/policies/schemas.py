@@ -15,7 +15,6 @@ class AuthorizationPolicyIn(BaseModel):
 
 class ResourceAuthorizationRequest(BaseModel):
     service_ref: EntityRefIn
-    resource_collection: str
 
 
 def check_reserved_keys(context: dict):
