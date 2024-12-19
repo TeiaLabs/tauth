@@ -10,6 +10,10 @@ class InfostarExtra(TypedDict, total=False):
     os: str
     url: str  # reverse dns
     user_agent: str
+    name: str
+    nickname: str
+    email: str
+    picture: str
 
 
 class Infostar(BaseModel):

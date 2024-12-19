@@ -1,8 +1,11 @@
 from collections.abc import Iterable
+from copy import deepcopy
 
 import httpx
 
+from ..authz.engines.interface import AuthorizationResponse
 from ..authz.permissions.models import PermissionDAO
+from ..authz.policies.schemas import AuthorizationDataIn
 from ..resource_management.access.schemas import GrantIn, GrantResponse
 from ..resource_management.resources.schemas import ResourceIn
 from ..schemas.gen_fields import GeneratedFields
@@ -33,9 +36,7 @@ class TAuthClient:
         return GrantResponse(**response.json())
 
     def delete_permission(self, permission_id: str) -> int:
-        response = self.http_client.delete(
-            f"/authz/permissions/{permission_id}"
-        )
+        response = self.http_client.delete(f"/authz/permissions/{permission_id}")
         response.raise_for_status()
         return response.status_code
 
