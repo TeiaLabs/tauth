@@ -1416,7 +1416,7 @@ wheels = [
 
 [[package]]
 name = "redbaby"
-version = "1.0.4"
+version = "1.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "compose" },
@@ -1426,9 +1426,9 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pymongo" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/03/85/4adf7d68a9d97d27d5d068e5ce352d1df9142707896d0b315e960828db92/redbaby-1.0.4.tar.gz", hash = "sha256:746026d6bf8125bf22f87ac51aec0d2eb96677feca390190389f965b3c2bc431", size = 18614 }
+sdist = { url = "https://files.pythonhosted.org/packages/63/b3/2de2da4e22e1bdb9240b162b28d5a7a473a8e6ce131545464f2b367816d7/redbaby-1.0.5.tar.gz", hash = "sha256:e5ae2f4aeebc43b0114a89db89c912a7fcfc367e33763d1bb4cf492e688ae7b2", size = 18543 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/dc/d8f800d1f5e5f55caf424ed98e677b278c6d3336979bb8dbcd9ffedc5853/redbaby-1.0.4-py3-none-any.whl", hash = "sha256:60ecc71e5c3efa27d5a44e191d4a99bd0fadb505f20ed6700143db8227b3b26b", size = 20429 },
+    { url = "https://files.pythonhosted.org/packages/d4/06/932e7f3a087e8b2e05c6e9be8c3d5be33c4514cc147f55e2681170f68875/redbaby-1.0.5-py3-none-any.whl", hash = "sha256:fbdbae38b312d033ab7fc5fa4f5f229c16a2b6f96d5198f46c3f3f654800fe18", size = 20341 },
 ]
 
 [[package]]
@@ -1563,7 +1563,7 @@ wheels = [
 
 [[package]]
 name = "tauth"
-version = "2.5.0.post8"
+version = "2.6.0.post0"
 source = { editable = "." }
 dependencies = [
     { name = "cachetools" },
@@ -1640,7 +1640,7 @@ requires-dist = [
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "pytz", specifier = ">=2024.2" },
-    { name = "redbaby", specifier = "==1.0.4" },
+    { name = "redbaby", specifier = "==1.0.5" },
     { name = "uvicorn", specifier = "<=0.29.0" },
 ]
 

@@ -24,7 +24,7 @@ dependencies = [
     "python-dotenv",
     "python-multipart",
     "pytz>=2024.2",
-    "redbaby==1.0.4",
+    "redbaby==1.0.5",
     "uvicorn<=0.29.0",
 ]
 
