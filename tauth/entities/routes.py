@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi import Path as PathParam
+from fastapi import Query, Request
 from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
@@ -79,7 +80,10 @@ async def read_many(
     name: str | None = Query(None),
     external_id_key: str | None = Query(None, alias="external_ids.key"),
     external_id_value: str | None = Query(None, alias="external_ids.value"),
+    limit: int = Query(1024, gt=0, le=1024),
+    offset: int = Query(0, ge=0),
 ):
+
     orgs = reading.read_many(
         infostar=infostar,
         model=EntityDAO,

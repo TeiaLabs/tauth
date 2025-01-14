@@ -49,6 +49,8 @@ def read_many(
     infostar: Infostar,
     service_handle: str | None,
     resource_collection: str | None,
+    limit: int,
+    offset: int,
 ) -> list[ResourceDAO]:
     filters = {}
     if service_handle:
@@ -56,4 +58,10 @@ def read_many(
     if resource_collection:
         filters["resource_collection"] = resource_collection
 
-    return reading.read_many(infostar=infostar, model=ResourceDAO, **filters)
+    return reading.read_many(
+        infostar=infostar,
+        limit=limit,
+        offset=offset,
+        model=ResourceDAO,
+        **filters,
+    )

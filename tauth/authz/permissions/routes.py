@@ -87,6 +87,8 @@ async def read_many(
     name: str | None = Query(None),
     ends_with: str | None = Query(None),
     entity_handle: str | None = Query(None),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(1024, gt=0, le=1024),
 ):
     logger.debug(f"Reading permissions with filters: {request.query_params}")
     # Decode the URL-encoded query parameters
@@ -181,6 +183,8 @@ async def delete(
     roles = reading.read_many(
         infostar=infostar,
         model=RoleDAO,
+        limit=1024,
+        offset=0,
         **{"permissions": permission_id},
     )
     if roles:

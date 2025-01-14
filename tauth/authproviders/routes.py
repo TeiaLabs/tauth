@@ -49,7 +49,9 @@ async def create_one(
     org_ref = OrganizationRef(**org_ref.model_dump())
 
     if body.external_ids:
-        external_ids_dict = {item.name: item.value for item in body.external_ids}
+        external_ids_dict = {
+            item.name: item.value for item in body.external_ids
+        }
         issuer = external_ids_dict.get("issuer")
         org_id = external_ids_dict.get("org_id")
 
@@ -86,10 +88,14 @@ async def read_many(
     request: Request,
     infostar: Infostar = Depends(privileges.is_valid_user),
     name: str | None = Query(None),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(1024, gt=0, le=1024),
 ):
     orgs = reading.read_many(
         infostar=infostar,
         model=AuthProviderDAO,
-        **request.query_params,
+        limit=limit,
+        offset=offset,
+        name=name,
     )
     return orgs

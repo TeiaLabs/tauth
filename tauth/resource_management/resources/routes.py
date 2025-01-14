@@ -39,6 +39,8 @@ async def read_many(
     infostar: Infostar = Depends(authenticate),
     service_handle: str | None = Query(None),
     resource_collection: str | None = Query(None),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(1024, gt=0, le=1024),
 ) -> list[ResourceDAO]:
     logger.debug(f"Reading many Resources for {infostar.user_handle}")
 
@@ -46,6 +48,8 @@ async def read_many(
         infostar=infostar,
         service_handle=service_handle,
         resource_collection=resource_collection,
+        limit=limit,
+        offset=offset,
     )
 
 

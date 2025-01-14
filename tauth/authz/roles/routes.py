@@ -120,6 +120,8 @@ async def read_many(
     infostar: Infostar = Depends(privileges.is_valid_user),
     name: str | None = Query(None),
     entity_handle: str | None = Query(None),
+    limit: int = Query(1024, gt=0, le=1024),
+    offset: int = Query(0, ge=0),
 ) -> list[RoleOut]:
     logger.debug(f"Reading roles with filters: {request.query_params}")
     # Decode the URL-encoded query parameters
