@@ -15,13 +15,23 @@ U = TypeVar("U")
 X = TypeVar("X")
 
 
-def read_many(infostar: Infostar, model: type[T], **filters) -> list[T]:
+def read_many(
+    infostar: Infostar,
+    model: type[T],
+    limit: Any = 0,
+    offset: Any = 0,
+    **filters,
+) -> list[T]:
     query = {k: v for k, v in filters.items() if v is not None}
+    limit = int(limit)
+    offset = int(offset)
     objs = model.find(
         filter=query,
         alias=Settings.get().REDBABY_ALIAS,
         validate=True,
         lazy=False,
+        limit=limit,
+        skip=offset,
     )
     return objs
 
