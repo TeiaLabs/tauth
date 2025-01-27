@@ -33,9 +33,7 @@ class TAuthClient:
         return GrantResponse(**response.json())
 
     def delete_permission(self, permission_id: str) -> int:
-        response = self.http_client.delete(
-            f"/authz/permissions/{permission_id}"
-        )
+        response = self.http_client.delete(f"/authz/permissions/{permission_id}")
         response.raise_for_status()
         return response.status_code
 
@@ -52,9 +50,7 @@ class TAuthClient:
         response.raise_for_status()
         return response.status_code
 
-    def remove_permission_from_entity(
-        self, entity_id: str, permission_id: str
-    ):
+    def remove_permission_from_entity(self, entity_id: str, permission_id: str):
         response = self.http_client.delete(
             f"/entities/{entity_id}/permissions/{permission_id}"
         )
@@ -67,5 +63,9 @@ class TAuthClient:
             f"/entities/{entity_id}/permissions/{permission_id}"
         )
         response.raise_for_status()
-
         return response.status_code
+
+    def read_entities(self, params: dict) -> Iterable[dict]:
+        response = self.http_client.get("/entities", params=params)
+        response.raise_for_status()
+        return response.json()

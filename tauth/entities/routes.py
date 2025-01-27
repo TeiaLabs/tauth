@@ -53,9 +53,7 @@ async def create_one(
 
 
 @router.post("/{entity_id}", status_code=s.HTTP_200_OK)
-@router.post(
-    "/{entitiy_id}/", status_code=s.HTTP_200_OK, include_in_schema=False
-)
+@router.post("/{entitiy_id}/", status_code=s.HTTP_200_OK, include_in_schema=False)
 async def read_one(
     entity_id: str,
     infostar: Infostar = Depends(authenticate),
@@ -76,17 +74,25 @@ async def read_one(
 async def read_many(
     request: Request,
     infostar: Infostar = Depends(authenticate),
-    name: str | None = Query(None),
+    handle: str | None = Query(None),
+    owner_handle: str | None = Query(None),
     external_id_key: str | None = Query(None, alias="external_ids.key"),
     external_id_value: str | None = Query(None, alias="external_ids.value"),
     limit: int = Query(1024, gt=0, le=1024),
     offset: int = Query(0, ge=0),
 ):
-
+    filters = {
+        "handle": handle,
+        "owner_ref.handle": owner_handle,
+        "external_ids.name": external_id_key,
+        "external_ids.value": external_id_value,
+    }
     orgs = reading.read_many(
         infostar=infostar,
         model=EntityDAO,
-        **request.query_params,
+        limit=limit,
+        offset=offset,
+        **filters,
     )
     return orgs
 
@@ -197,9 +203,7 @@ async def remove_entity_role(
     }
 
 
-@router.post(
-    "/{entity_id}/permissions/{permission_id}", status_code=s.HTTP_201_CREATED
-)
+@router.post("/{entity_id}/permissions/{permission_id}", status_code=s.HTTP_201_CREATED)
 async def add_entity_permission(
     infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
@@ -252,9 +256,7 @@ async def remove_entity_permission(
     entity_id: str = PathParam(),
     permission_id: PyObjectId = PathParam(),
 ):
-    logger.debug(
-        f"Removing permission {permission_id!r} from entity {entity_id!r}."
-    )
+    logger.debug(f"Removing permission {permission_id!r} from entity {entity_id!r}.")
     entity_coll = EntityDAO.collection(alias=Settings.get().REDBABY_ALIAS)
     res = entity_coll.update_one(
         {"_id": entity_id},
