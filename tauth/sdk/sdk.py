@@ -1,11 +1,8 @@
 from collections.abc import Iterable
-from copy import deepcopy
 
 import httpx
 
-from ..authz.engines.interface import AuthorizationResponse
 from ..authz.permissions.models import PermissionDAO
-from ..authz.policies.schemas import AuthorizationDataIn
 from ..resource_management.access.schemas import GrantIn, GrantResponse
 from ..resource_management.resources.schemas import ResourceIn
 from ..schemas.gen_fields import GeneratedFields
@@ -36,7 +33,9 @@ class TAuthClient:
         return GrantResponse(**response.json())
 
     def delete_permission(self, permission_id: str) -> int:
-        response = self.http_client.delete(f"/authz/permissions/{permission_id}")
+        response = self.http_client.delete(
+            f"/authz/permissions/{permission_id}"
+        )
         response.raise_for_status()
         return response.status_code
 
@@ -51,4 +50,22 @@ class TAuthClient:
             f"/resource_management/resources/{resource_id}"
         )
         response.raise_for_status()
+        return response.status_code
+
+    def remove_permission_from_entity(
+        self, entity_id: str, permission_id: str
+    ):
+        response = self.http_client.delete(
+            f"/entities/{entity_id}/permissions/{permission_id}"
+        )
+        response.raise_for_status()
+
+        return response.status_code
+
+    def add_permission_to_entity(self, entity_id: str, permission_id: str):
+        response = self.http_client.post(
+            f"/entities/{entity_id}/permissions/{permission_id}"
+        )
+        response.raise_for_status()
+
         return response.status_code

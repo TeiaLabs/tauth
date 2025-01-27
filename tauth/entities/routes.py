@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi import Path as PathParam
-from fastapi import Query, Request
 from fastapi import status as s
 from loguru import logger
 from redbaby.pyobjectid import PyObjectId
@@ -198,11 +197,13 @@ async def remove_entity_role(
     }
 
 
-@router.post("/{entity_id}/permissions", status_code=s.HTTP_201_CREATED)
+@router.post(
+    "/{entity_id}/permissions/{permission_id}", status_code=s.HTTP_201_CREATED
+)
 async def add_entity_permission(
     infostar: Infostar = Depends(authenticate),
     entity_id: str = PathParam(),
-    permission_id: PyObjectId = Query(),
+    permission_id: PyObjectId = PathParam(),
 ):
     logger.debug(f"Adding permission (permission_id={permission_id!r}")
 
