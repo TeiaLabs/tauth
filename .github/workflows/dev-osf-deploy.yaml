@@ -1,6 +1,11 @@
 name: osf-dev-deploy
 
 on:
+  push:
+    branches: [master, v2]
+    paths:
+      - "tauth/**"
+      - ".github/**"
   workflow_dispatch:
 
 env:
@@ -11,36 +16,46 @@ env:
   ECS_CLUSTER: allai-staging-services
   ECS_SERVICE: tauth-beta
 
-  SOURCE_REPOSITORY: 147431826892.dkr.ecr.us-east-1.amazonaws.com/tauth-alpha
-  SOURCE_IMAGE_TAG: alpha
-
-  TARGET_REPOSITORY: 147431826892.dkr.ecr.us-east-1.amazonaws.com/tauth-beta
-  TARGET_IMAGE_TAG: beta
+  REPOSITORY: 147431826892.dkr.ecr.us-east-1.amazonaws.com/tauth-beta
+  IMAGE_TAG: beta
 
 jobs:
-    build:
-        name: Deploy production image
-        runs-on: ubuntu-latest
+  build:
+    name: Deploy development image
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Configure AWS credentials
-              uses: aws-actions/configure-aws-credentials@v4
-              with:
-                  aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-                  aws-region: ${{ env.AWS_DEFAULT_REGION }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
-            - name: Login to Amazon ECR
-              uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
 
-            - name: Pull latest beta image
-              run: docker pull ${{ env.SOURCE_REPOSITORY }}:${{ env.SOURCE_IMAGE_TAG }}
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-            - name: Tag as latest production image
-              run: docker tag ${{ env.SOURCE_REPOSITORY }}:${{ env.SOURCE_IMAGE_TAG }} ${{ env.TARGET_REPOSITORY }}:${{ env.TARGET_IMAGE_TAG }}
+      - name: Set SSH agent
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          log-public-key: true
+          ssh-private-key: |
+            ${{ secrets.TEIA_AUTOMATION_SSH }}
 
-            - name: Push to ECR
-              run: docker push ${{ env.TARGET_REPOSITORY }}:${{ env.TARGET_IMAGE_TAG }}
+      - name: Build and push to ECR
+        uses: docker/build-push-action@v4
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          target: production
+          ssh: default
+          tags: "${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}"
 
-            - name: Deploy on ECS
-              run: aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
+      - name: Force deployment to ECS
+        run: aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --force-new-deployment
