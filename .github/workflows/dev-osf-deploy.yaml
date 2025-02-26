@@ -21,7 +21,7 @@ env:
 
 jobs:
   build:
-    name: Deploy production image
+    name: Deploy development image
     runs-on: ubuntu-latest
 
     steps:
