@@ -228,12 +228,16 @@ class RequestAuthenticator:
                     "msg": f"Document with org_handle=/{org_handle} and user_handle={user_creator_email} not found. User or Authprovider no registered in organization.",
                 }
                 raise HTTPException(status_code=404, detail=d)
-            if len(results) > 1:
+            if len(results) > 1 and infostar.service_handle:
                 d = {
                     "error": "DocumentNotUnique",
                     "msg": f"Document with org_handle=/{org_handle} and user_handle={user_creator_email} is not unique.",
                 }
                 raise HTTPException(status_code=409, detail=d)
+            if len(results) > 1 and not infostar.service_handle:
+                logger.warning(
+                    f"Authenticating user {infostar.user_handle} without service_handle into /{org_handle}"
+                )
         else:
             pipeline.append({"$match": {"user.type": "user"}})
             results = list(collection.aggregate(pipeline))
@@ -243,12 +247,16 @@ class RequestAuthenticator:
                     "msg": f"Document with org_handle=/{org_handle} not found. Users or Authprovider no registered in organization.",
                 }
                 raise HTTPException(status_code=404, detail=d)
-            if len(results) > 1:
+            if len(results) > 1 and infostar.service_handle:
                 d = {
                     "error": "DocumentNotUnique",
                     "msg": f"Document with org_handle=/{org_handle} is not unique. Please provide an e-mail to filter results.",
                 }
                 raise HTTPException(status_code=409, detail=d)
+            if len(results) > 1 and not infostar.service_handle:
+                logger.warning(
+                    f"Authenticating user {infostar.user_handle} without service_handle into /{org_handle}"
+                )
 
         data = results[0]
         data.pop("authprovider")
